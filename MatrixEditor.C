@@ -128,7 +128,6 @@ char& WindowEntry::operator[](size_t position)
 void WindowEntry::set(void)
 {
     wmove(_win, _win_pos.row(), _win_pos.col());
-    wrefresh(_win);
 }
 
 void WindowEntry::draw(void)
@@ -165,13 +164,14 @@ void WindowEntry::draw(void)
 void WindowEntry::update(void)
 {
     int old_curs = curs_set(0);
+
     wmove(_win, _win_pos.row(), _win_pos.col() - _pos);
     wclrtoeol(_win);
 
     draw();
 
     wmove(_win, _win_pos.row(), _win_pos.col());
-    wrefresh(_win);
+
     curs_set(old_curs);
 }
 
@@ -204,7 +204,6 @@ void WindowEntry::move(int amount)
     _pos += amount;
 
     wmove(_win, _win_pos.row(), _win_pos.col());
-    wrefresh(_win);
 }
 
 void WindowEntry::mpos(int pos)
@@ -334,7 +333,6 @@ void WindowEntry::vstop(void)
     _vstart = -1;
 
     wmove(_win, _win_pos.row(), _win_pos.col());
-    wrefresh(_win);
 }
 
 void WindowEntry::vhighlight(void)
@@ -396,7 +394,6 @@ void WindowEntry::vmove(int amount)
     }
 
     wmove(_win, _win_pos.row(), _win_pos.col());
-    wrefresh(_win);
 }
 
 void WindowEntry::vmpos(int pos)
@@ -740,6 +737,7 @@ MatrixEntry::MatrixEntry(WINDOW* w, const Cursor& c, string s, MatrixEntryPositi
         _width = _data.size();
 
     _win_pos >> (_width + 2);
+    //_win_pos >> 2;
 }
 
 MatrixEntry::MatrixEntry(WINDOW* w, const Cursor& c, size_t width, string s, MatrixEntryPosition mep)
@@ -751,6 +749,7 @@ MatrixEntry::MatrixEntry(WINDOW* w, const Cursor& c, size_t width, string s, Mat
         _width = _data.size();
 
     _win_pos >> (_width + 2);
+    //_win_pos >> ((_width - _data.size()) + 2);
 }
 
 MatrixEntry& MatrixEntry::operator=(const MatrixEntry& rhs)
@@ -806,7 +805,7 @@ void MatrixEntry::update(void)
     draw();
 
     wmove(_win, _win_pos.row(), _win_pos.col());
-    wrefresh(_win);
+
     curs_set(old_curs);
 }
 
@@ -821,7 +820,7 @@ void MatrixEntry::update(void)
     draw();
 
     wmove(_win, _win_pos.row(), _win_pos.col());
-    wrefresh(_win);
+
     curs_set(old_curs);
 }
 #endif
@@ -1027,11 +1026,15 @@ bool EditorWindow::is_print(int ch)
     return (isgraph(ch) || isspace(ch));
 }
 
-void EditorWindow::redraw(void)
+void EditorWindow::clear(void)
 {
     wbkgd(_win, COLOR_PAIR(_color_pair.pair_number()));
     wclear(_win);
-    wrefresh(_win);
+}
+
+void EditorWindow::redraw(void)
+{
+    this->refresh();
 }
 
 void EditorWindow::refresh(void)
@@ -1415,7 +1418,6 @@ void MatrixPane::draw(void)
     }
 
     wclrtobot(_win);
-    wrefresh(_win);
 
     curs_set(old_curs);
     wmove(_win, y, x);
@@ -1585,10 +1587,12 @@ void MatrixPane::set(void)
 
 void MatrixPane::redraw(void)
 {
-    wbkgd(_win, COLOR_PAIR(_color_pair.pair_number()));
-    wclear(_win);
+    EditorWindow::clear();
+
     draw();
     set();
+
+    EditorWindow::refresh();
 }
 
 void MatrixPane::refresh(void)
@@ -1597,6 +1601,8 @@ void MatrixPane::refresh(void)
         draw();
 
     set();
+
+    EditorWindow::refresh();
 }
 
 void MatrixPane::insert_mode(int ch)
@@ -2539,7 +2545,6 @@ void MatrixPane::solve(void)
     size_t pos;
 
     _e_i = 0;
-    //curs_row++;
 
     // Determinant
     wattr_on(_win, A_BOLD, NULL);
@@ -2552,6 +2557,8 @@ void MatrixPane::solve(void)
 
         _extra_data.push_back(new EvalEntry(_win, Cursor(++curs_row, 0), str));
     }
+
+    wgetch(_win);
 
     curs_row++;
 
@@ -2567,9 +2574,42 @@ void MatrixPane::solve(void)
         while (!str.empty())
         {
             pos = str.find('\n');
-            _extra_data.push_back(new MatrixEntry(_win, Cursor(++curs_row, 0), str.substr(0, pos)));
+            if (pos > 0)
+                _extra_data.push_back(new MatrixEntry(_win, Cursor(++curs_row, 0), str.substr(0, pos)));
             str.erase(0, pos + 1);
         }
+#if 0
+        Matrix<Scientific> CF(A.cofactor_matrix());
+        vector<MatrixEntry*> cofactor_matrix;
+        size_t max_size = 0;
+        for (size_t i = 1; i <= CF.rows(); i++)
+        {
+            size_t col = 0;
+            for (size_t j = 1; j <= CF.cols(); j++)
+            {
+                ostringstream oss;
+                oss << CF(i,j);
+                str = oss.str();
+
+                if (str.size() > max_size)
+                    max_size = str.size();
+
+                MatrixEntry::MatrixEntryPosition mep;
+                if (j == 1)
+                    mep = MatrixEntry::MEP_START;
+                else if (j == CF.cols())
+                    mep = MatrixEntry::MEP_END;
+                else
+                    mep = MatrixEntry::MEP_MIDDLE;
+
+                MatrixEntry* me = new MatrixEntry(_win, Cursor(curs_row + i, col), str, mep);
+                _cofacor_matrix.push_back(me);
+                col += me->width() + 3;
+            }
+        }
+
+        curs_row += CF.rows();
+#endif
     }
 
     curs_row++;
@@ -2586,7 +2626,8 @@ void MatrixPane::solve(void)
         while (!str.empty())
         {
             pos = str.find('\n');
-            _extra_data.push_back(new MatrixEntry(_win, Cursor(++curs_row, 0), str.substr(0, pos)));
+            if (pos > 0)
+                _extra_data.push_back(new MatrixEntry(_win, Cursor(++curs_row, 0), str.substr(0, pos)));
             str.erase(0, pos + 1);
         }
     }
@@ -2605,7 +2646,8 @@ void MatrixPane::solve(void)
         while (!str.empty())
         {
             pos = str.find('\n');
-            _extra_data.push_back(new MatrixEntry(_win, Cursor(++curs_row, 0), str.substr(0, pos)));
+            if (pos > 0)
+                _extra_data.push_back(new MatrixEntry(_win, Cursor(++curs_row, 0), str.substr(0, pos)));
             str.erase(0, pos + 1);
         }
     }
@@ -2628,7 +2670,8 @@ void MatrixPane::solve(void)
         str = coss.str();
         cout.rdbuf(cout_buf);
 
-        _extra_data.push_back(new MatrixEntry(_win, Cursor(++curs_row, 0), str));
+        pos = str.find('\n');
+        _extra_data.push_back(new MatrixEntry(_win, Cursor(++curs_row, 0), str.substr(0, pos)));
 
         ostringstream oss;
         oss << CR;
@@ -2637,28 +2680,53 @@ void MatrixPane::solve(void)
         while (!str.empty())
         {
             pos = str.find('\n');
-            _extra_data.push_back(new MatrixEntry(_win, Cursor(++curs_row, 0), str.substr(0, pos)));
+            if (pos > 0)
+                _extra_data.push_back(new MatrixEntry(_win, Cursor(++curs_row, 0), str.substr(0, pos)));
             str.erase(0, pos + 1);
         }
 
         curs_row++;
     }
 
-    int h, w;
+    wgetch(_win);
+
+    int y, x, h, w;
+    getbegyx(_win, y, x);
     getmaxyx(_win, h, w);
 
-    mvwprintw(_win, curs_row, 0, "Window height: %d, Current row: %d", h, curs_row);
-    wgetch(_win);
-
     _e_i = 0;
+    int max_row = h - 1;
+    int scrolled = 0;
     for (size_t i = 0; i < _extra_data.size(); i++)
+    {
+        Cursor& c(_extra_data[i]->cursor());
+
+        if (c.row() >= (max_row - 1))
+        {
+            wattr_on(_win, A_BOLD, NULL);
+            mvwprintw(_win, max_row, 0, "Press Enter to see more data...");
+            wattr_off(_win, A_BOLD, NULL);
+            wgetch(_win);
+            wmove(_win, max_row, 0);
+            wclrtoeol(_win);
+
+            int diff = c.row() - (max_row - 1);
+
+            wscrl(_win, diff - scrolled + 1);
+            scrolled += diff - scrolled + 1;
+
+            c - (diff + 1);
+        }
+
         _extra_data[i]->update();
+    }
+
+    //wgetch(_win);
+    //wscrl(_win, -5);
+    //wgetch(_win);
+    //wscrl(_win, 5);
 
     wgetch(_win);
-    wscrl(_win, -5);
-    wgetch(_win);
-    wscrl(_win, 5);
-
     set();
     curs_set(old_curs);
     cancel(K_ESCAPE);
@@ -2745,7 +2813,7 @@ void EvalPane::draw(void)
     _e_entry.draw();
 
     wmove(_win, y, x);
-    wrefresh(_win);
+
     curs_set(old_curs);
 }
 
@@ -2756,14 +2824,19 @@ void EvalPane::set(void)
 
 void EvalPane::redraw(void)
 {
-    wbkgd(_win, COLOR_PAIR(_color_pair.pair_number()));
+    EditorWindow::clear();
+
     draw();
     set();
+
+    EditorWindow::refresh();
 }
 
 void EvalPane::refresh(void)
 {
     set();
+
+    EditorWindow::refresh();
 }
 
 void EvalPane::insert_mode(int ch)
@@ -3427,12 +3500,12 @@ bool MatrixEditor::init(void)
         return false;
     }
 
+    _matrix_panes.push_back(MatrixPane(2, this, _matrix_pane_window));
+    _current_matrix_pane = 0;
+
     scrollok(_matrix_pane_window, TRUE);
     keypad(_matrix_pane_window, TRUE);
     wnoutrefresh(_matrix_pane_window);
-
-    _matrix_panes.push_back(MatrixPane(2, this, _matrix_pane_window));
-    _current_matrix_pane = 0;
 
     starty += mpwh;
     // *************************************************************************
@@ -3463,12 +3536,12 @@ bool MatrixEditor::init(void)
         return false;
     }
 
+    _eval_panes.push_back(EvalPane(this, _eval_pane_window));
+    _current_eval_pane = 0;
+
     scrollok(_eval_pane_window, TRUE);
     keypad(_eval_pane_window, TRUE);
     wnoutrefresh(_eval_pane_window);
-
-    _eval_panes.push_back(EvalPane(this, _eval_pane_window));
-    _current_eval_pane = 0;
 
     starty += epwh;
     // *************************************************************************
@@ -3614,7 +3687,6 @@ void MatrixEditor::resize_windows(void)
 
     endwin();
     refresh();
-    //clear();
 
     getmaxyx(stdscr, _h, _w);
     getbegyx(stdscr, _y, _x);
@@ -3769,7 +3841,6 @@ void MatrixEditor::set_mode(EditorMode mode)
 
     }
 
-    _current_editor_window->refresh();
     _mode = mode;
 }
 
@@ -3779,7 +3850,7 @@ void MatrixEditor::error(string e)
         return;
 
     int old_curs = curs_set(0);
-    //wclear(_error_window);
+
     wprintw(_error_window, "%s", e.c_str());
     wrefresh(_error_window);
 
@@ -3787,9 +3858,8 @@ void MatrixEditor::error(string e)
 
     wclear(_error_window);
     wrefresh(_error_window);
-    curs_set(old_curs);
 
-    _current_editor_window->refresh();
+    curs_set(old_curs);
 }
 
 void MatrixEditor::command(int ch)
@@ -3801,8 +3871,6 @@ void MatrixEditor::command(int ch)
 
     wclear(_command_window);
     wrefresh(_command_window);
-
-    _current_editor_window->refresh();
 }
 
 void trim_whitespace(string& s)
@@ -3824,9 +3892,7 @@ void MatrixEditor::process_command(int ch)
 
     WINDOW* w = _command_window;
 
-    //wclear(w);
     waddch(w, ch);
-    wrefresh(w);
 
     int y, x;
     int line_start = 1;
@@ -3945,16 +4011,12 @@ void MatrixEditor::process_command(int ch)
             default:
                 if (isprint(ch))
                 {
-                    waddch(w, ch);
+                    winsch(w, ch);
+                    wmove(w, y, x + 1);
                     line_end++;
-                    //wechochar(w, ch);
-                    //getyx(w, y, x);
-                    //continue;
                 }
                 break;
         }
-
-        wrefresh(w);
 
         getyx(w, y, x);
         if (x == 0)
@@ -4062,7 +4124,6 @@ void MatrixEditor::color(const vector<string>& args)
         if (ch == -1)
         {
             wprintw(w, "Error getting character");
-            wrefresh(w);
             continue;
         }
 
@@ -4108,9 +4169,10 @@ void MatrixEditor::color(const vector<string>& args)
 
     cp.pair(fg, bg);
 
-    curs_set(old_curs);
     wclear(w);
     wrefresh(w);
+
+    curs_set(old_curs);
 }
 
 void MatrixEditor::prev_pane(const vector<string>& args)
@@ -4203,10 +4265,6 @@ void MatrixEditor::matrix_pane(const vector<string>& args)
 
         _matrix_panes[_current_matrix_pane].redraw();
     }
-    else
-    {
-        _matrix_panes[_current_matrix_pane].refresh();
-    }
 
     _current_editor_window = &_matrix_panes[_current_matrix_pane];
 }
@@ -4221,10 +4279,6 @@ void MatrixEditor::eval_pane(const vector<string>& args)
         _current_eval_pane = _eval_panes.size() - 1;
 
         _eval_panes[_current_eval_pane].redraw();
-    }
-    else
-    {
-        _eval_panes[_current_eval_pane].refresh();
     }
 
     _current_editor_window = &_eval_panes[_current_eval_pane];

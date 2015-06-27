@@ -451,6 +451,7 @@ class EditorWindow
 
         virtual void no_op(int ch) {}
 
+        virtual void clear(void);
         virtual void redraw(void);
         virtual void refresh(void);
         virtual bool is_print(int ch);
@@ -883,6 +884,7 @@ class MatrixPane : public EditorWindow
 
         //virtual void no_op(int ch) {}
 
+        //virtual void clear(void);
         virtual void redraw(void);
         virtual void refresh(void);
         virtual bool is_print(int ch);
@@ -1377,6 +1379,7 @@ class EvalPane : public EditorWindow
 
         //virtual void no_op(int ch) {}
 
+        //virtual void clear(void);
         virtual void redraw(void);
         virtual void refresh(void);
         virtual bool is_print(int ch);
