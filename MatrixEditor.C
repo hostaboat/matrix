@@ -12,7 +12,6 @@
 using namespace std;
 
 vector<int> ColorPair::color_pairs(50, 0);
-vector<int> ColorPair::color_pairs(50, 0);
 
 Cursor::Cursor(void)
     : _row(0), _col(0)
