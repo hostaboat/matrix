@@ -412,13 +412,13 @@ class MatrixEntry : public WindowEntry
 
 class MatrixEditor;
 
-class EditorWindow
+class WindowPane
 {
     public:
-        EditorWindow(MatrixEditor* me, WINDOW* w);
-        EditorWindow(const EditorWindow& rhs);
-        EditorWindow& operator=(const EditorWindow& rhs);
-        ~EditorWindow(void) {};
+        WindowPane(MatrixEditor* me, WINDOW* w);
+        WindowPane(const WindowPane& rhs);
+        WindowPane& operator=(const WindowPane& rhs);
+        ~WindowPane(void) {};
 
         virtual void insert_mode(int ch);
         virtual void edit_mode(int ch);
@@ -457,7 +457,7 @@ class EditorWindow
         virtual bool is_print(int ch);
         virtual void we_addstr(string s);
 
-        typedef void (EditorWindow::*KeyAction)(int ch);
+        typedef void (WindowPane::*KeyAction)(int ch);
 #define MEW_CALL(object, member_func)   ((object).*(member_func))
         struct KeyModeAction
         {
@@ -485,367 +485,367 @@ class EditorWindow
             {
                 K_ESCAPE,
                 { 
-                    &EditorWindow::edit_mode,
-                    &EditorWindow::cancel,
-                    &EditorWindow::visual_cancel,
-                    &EditorWindow::replace_cancel
+                    &WindowPane::edit_mode,
+                    &WindowPane::cancel,
+                    &WindowPane::visual_cancel,
+                    &WindowPane::replace_cancel
                 }
             },
             {
                 KEY_BACKSPACE,
                 {
-                    &EditorWindow::remove,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::move
+                    &WindowPane::remove,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::move
                 }
             },
             {
                 K_BACKSPACE1,
                 {
-                    &EditorWindow::remove,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::move
+                    &WindowPane::remove,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::move
                 }
             },
             {
                 K_BACKSPACE2,
                 {
-                    &EditorWindow::remove,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::move
+                    &WindowPane::remove,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::move
                 }
             },
             {
                 KEY_DC,
                 {
-                    &EditorWindow::remove,
-                    &EditorWindow::remove,
-                    &EditorWindow::visual_remove,
-                    &EditorWindow::no_op
+                    &WindowPane::remove,
+                    &WindowPane::remove,
+                    &WindowPane::visual_remove,
+                    &WindowPane::no_op
                 }
             },
             {
                 'x',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::remove,
-                    &EditorWindow::visual_remove,
-                    &EditorWindow::replace
+                    &WindowPane::insert,
+                    &WindowPane::remove,
+                    &WindowPane::visual_remove,
+                    &WindowPane::replace
                 }
             },
             {
                 'd',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::clear,
-                    &EditorWindow::visual_remove,
-                    &EditorWindow::replace
+                    &WindowPane::insert,
+                    &WindowPane::clear,
+                    &WindowPane::visual_remove,
+                    &WindowPane::replace
                 }
             },
             {
                 'D',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::clear_to_eol,
-                    &EditorWindow::visual_clear,
-                    &EditorWindow::replace
+                    &WindowPane::insert,
+                    &WindowPane::clear_to_eol,
+                    &WindowPane::visual_clear,
+                    &WindowPane::replace
                 }
             },
             {
                 'p',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::paste,
-                    &EditorWindow::visual_paste,
-                    &EditorWindow::replace
+                    &WindowPane::insert,
+                    &WindowPane::paste,
+                    &WindowPane::visual_paste,
+                    &WindowPane::replace
                 }
             },
             {
                 'P',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::paste,
-                    &EditorWindow::visual_paste,
-                    &EditorWindow::replace
+                    &WindowPane::insert,
+                    &WindowPane::paste,
+                    &WindowPane::visual_paste,
+                    &WindowPane::replace
                 }
             },
             {
                 'r',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::replace_mode,
-                    &EditorWindow::visual_replace,
-                    &EditorWindow::replace
+                    &WindowPane::insert,
+                    &WindowPane::replace_mode,
+                    &WindowPane::visual_replace,
+                    &WindowPane::replace
                 }
             },
             {
                 'R',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::replace_mode,
-                    &EditorWindow::visual_replace,
-                    &EditorWindow::replace
+                    &WindowPane::insert,
+                    &WindowPane::replace_mode,
+                    &WindowPane::visual_replace,
+                    &WindowPane::replace
                 }
             },
             {
                 K_NEWLINE,
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::replace
+                    &WindowPane::insert,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::replace
                 }
             },
             {
                 KEY_ENTER,
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::move,
-                    &EditorWindow::no_op,
-                    &EditorWindow::replace
+                    &WindowPane::insert,
+                    &WindowPane::move,
+                    &WindowPane::no_op,
+                    &WindowPane::replace
                 }
             },
             {
                 KEY_HOME,
                 {
-                    &EditorWindow::move,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::replace,
+                    &WindowPane::move,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::replace,
                 }
             },
             {
                 '^',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::replace
+                    &WindowPane::insert,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::replace
                 }
             },
             {
                 '_',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::replace
+                    &WindowPane::insert,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::replace
                 }
             },
             {
                 '$',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::replace
+                    &WindowPane::insert,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::replace
                 }
             },
             {
                 'g',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::replace
+                    &WindowPane::insert,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::replace
                 }
             },
             {
                 'G',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::replace
+                    &WindowPane::insert,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::replace
                 }
             },
             {
                 KEY_LEFT,
                 {
-                    &EditorWindow::move,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::move
+                    &WindowPane::move,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::move
                 }
             },
             {
                 'h',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::replace
+                    &WindowPane::insert,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::replace
                 }
             },
             {
                 KEY_RIGHT,
                 {
-                    &EditorWindow::move,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::move
+                    &WindowPane::move,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::move
                 }
             },
             {
                 'l',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::replace
+                    &WindowPane::insert,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::replace
                 }
             },
             {
                 KEY_UP,
                 {
-                    &EditorWindow::move,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::move
+                    &WindowPane::move,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::move
                 }
             },
             {
                 'k',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::replace
+                    &WindowPane::insert,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::replace
                 }
             },
             {
                 '-',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::replace
+                    &WindowPane::insert,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::replace
                 }
             },
             {
                 KEY_DOWN,
                 {
-                    &EditorWindow::move,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::move
+                    &WindowPane::move,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::move
                 }
             },
             {
                 'j',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::replace
+                    &WindowPane::insert,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::replace
                 }
             },
             {
                 '+',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::replace
+                    &WindowPane::insert,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::replace
                 }
             },
             {
                 K_TAB,
                 {
-                    &EditorWindow::move,
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op
+                    &WindowPane::move,
+                    &WindowPane::no_op,
+                    &WindowPane::no_op,
+                    &WindowPane::no_op
                 }
             },
             {
                 KEY_BTAB,
                 {
-                    &EditorWindow::move,
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op
+                    &WindowPane::move,
+                    &WindowPane::no_op,
+                    &WindowPane::no_op,
+                    &WindowPane::no_op
                 }
             },
             {
                 'i',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::insert_mode,
-                    &EditorWindow::no_op,
-                    &EditorWindow::replace
+                    &WindowPane::insert,
+                    &WindowPane::insert_mode,
+                    &WindowPane::no_op,
+                    &WindowPane::replace
                 }
             },
             {
                 'a',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::insert_mode,
-                    &EditorWindow::no_op,
-                    &EditorWindow::replace
+                    &WindowPane::insert,
+                    &WindowPane::insert_mode,
+                    &WindowPane::no_op,
+                    &WindowPane::replace
                 }
             },
             {
                 'o',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::no_op,
-                    &EditorWindow::visual_toggle_position,
-                    &EditorWindow::replace
+                    &WindowPane::insert,
+                    &WindowPane::no_op,
+                    &WindowPane::visual_toggle_position,
+                    &WindowPane::replace
                 }
             },
             {
                 'O',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::no_op,
-                    &EditorWindow::visual_toggle_position,
-                    &EditorWindow::replace
+                    &WindowPane::insert,
+                    &WindowPane::no_op,
+                    &WindowPane::visual_toggle_position,
+                    &WindowPane::replace
                 }
             },
             {
                 's',  // Deletes char at cursor, like KEY_DC then to insert mode
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::insert_mode,
-                    &EditorWindow::visual_remove,
-                    &EditorWindow::replace
+                    &WindowPane::insert,
+                    &WindowPane::insert_mode,
+                    &WindowPane::visual_remove,
+                    &WindowPane::replace
                 }
             },
             {
                 'v',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::visual_mode,
-                    &EditorWindow::visual_cancel,
-                    &EditorWindow::replace
+                    &WindowPane::insert,
+                    &WindowPane::visual_mode,
+                    &WindowPane::visual_cancel,
+                    &WindowPane::replace
                 }
             },
             {
                 'y',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::yank,
-                    &EditorWindow::visual_yank,
-                    &EditorWindow::replace
+                    &WindowPane::insert,
+                    &WindowPane::yank,
+                    &WindowPane::visual_yank,
+                    &WindowPane::replace
                 }
             },
             {
                 ':',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::command_mode,
-                    &EditorWindow::no_op,
-                    &EditorWindow::replace
+                    &WindowPane::insert,
+                    &WindowPane::command_mode,
+                    &WindowPane::no_op,
+                    &WindowPane::replace
                 }
             },
         };
 };
 
-class MatrixPane : public EditorWindow
+class MatrixPane : public WindowPane
 {
     public:
         MatrixPane(size_t n, MatrixEditor* me, WINDOW* w);
@@ -948,399 +948,399 @@ class MatrixPane : public EditorWindow
             'e', 'E', '^'
         };
 
-        map<int, EditorWindow::KeyModeAction> _key_mode_actions = {
+        map<int, WindowPane::KeyModeAction> _key_mode_actions = {
             {
                 K_ESCAPE,
                 { 
-                    &EditorWindow::edit_mode,
-                    &EditorWindow::cancel,
-                    &EditorWindow::visual_cancel,
-                    &EditorWindow::replace_cancel
+                    &WindowPane::edit_mode,
+                    &WindowPane::cancel,
+                    &WindowPane::visual_cancel,
+                    &WindowPane::replace_cancel
                 }
             },
             {
                 KEY_BACKSPACE,
                 {
-                    &EditorWindow::remove,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::replace_move
+                    &WindowPane::remove,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::replace_move
                 }
             },
             {
                 K_BACKSPACE1,
                 {
-                    &EditorWindow::remove,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::replace_move
+                    &WindowPane::remove,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::replace_move
                 }
             },
             {
                 K_BACKSPACE2,
                 {
-                    &EditorWindow::remove,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::replace_move
+                    &WindowPane::remove,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::replace_move
                 }
             },
             {
                 KEY_DC,
                 {
-                    &EditorWindow::remove,
-                    &EditorWindow::remove,
-                    &EditorWindow::visual_remove,
-                    &EditorWindow::no_op
+                    &WindowPane::remove,
+                    &WindowPane::remove,
+                    &WindowPane::visual_remove,
+                    &WindowPane::no_op
                 }
             },
             {
                 'x',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::remove,
-                    &EditorWindow::visual_remove,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::remove,
+                    &WindowPane::visual_remove,
+                    &WindowPane::no_op
                 }
             },
             {
                 'd',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::clear,
-                    &EditorWindow::visual_remove,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::clear,
+                    &WindowPane::visual_remove,
+                    &WindowPane::no_op
                 }
             },
             {
                 'D',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::clear_to_eol,
-                    &EditorWindow::visual_clear,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::clear_to_eol,
+                    &WindowPane::visual_clear,
+                    &WindowPane::no_op
                 }
             },
             {
                 'p',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::paste,
-                    &EditorWindow::visual_paste,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::paste,
+                    &WindowPane::visual_paste,
+                    &WindowPane::no_op
                 }
             },
             {
                 'P',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::paste,
-                    &EditorWindow::visual_paste,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::paste,
+                    &WindowPane::visual_paste,
+                    &WindowPane::no_op
                 }
             },
             {
                 'r',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::replace_mode,
-                    &EditorWindow::visual_replace,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::replace_mode,
+                    &WindowPane::visual_replace,
+                    &WindowPane::no_op
                 }
             },
             {
                 'R',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::replace_mode,
-                    &EditorWindow::visual_replace,
-                    &EditorWindow::no_op
+                    &WindowPane::insert,
+                    &WindowPane::replace_mode,
+                    &WindowPane::visual_replace,
+                    &WindowPane::no_op
                 }
             },
             {
                 K_NEWLINE,
                 {
-                    &EditorWindow::enter,
-                    &EditorWindow::enter,
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op
+                    &WindowPane::enter,
+                    &WindowPane::enter,
+                    &WindowPane::no_op,
+                    &WindowPane::no_op
                 }
             },
             {
                 KEY_ENTER,
                 {
-                    &EditorWindow::enter,
-                    &EditorWindow::enter,
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op
+                    &WindowPane::enter,
+                    &WindowPane::enter,
+                    &WindowPane::no_op,
+                    &WindowPane::no_op
                 }
             },
             {
                 KEY_HOME,
                 {
-                    &EditorWindow::move,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::no_op
+                    &WindowPane::move,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::no_op
                 }
             },
             {
                 '^',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::replace
+                    &WindowPane::insert,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::replace
                 }
             },
             {
                 '_',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::no_op
                 }
             },
             {
                 '$',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::no_op
                 }
             },
             {
                 'g',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::no_op
                 }
             },
             {
                 'G',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::no_op
                 }
             },
             {
                 KEY_LEFT,
                 {
-                    &EditorWindow::move,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::replace_move
+                    &WindowPane::move,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::replace_move
                 }
             },
             {
                 'h',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::no_op
                 }
             },
             {
                 KEY_RIGHT,
                 {
-                    &EditorWindow::move,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::replace_move
+                    &WindowPane::move,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::replace_move
                 }
             },
             {
                 'l',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::no_op
                 }
             },
             {
                 KEY_UP,
                 {
-                    &EditorWindow::move,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::move
+                    &WindowPane::move,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::move
                 }
             },
             {
                 'k',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::no_op
                 }
             },
             {
                 '-',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::replace
+                    &WindowPane::insert,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::replace
                 }
             },
             {
                 KEY_DOWN,
                 {
-                    &EditorWindow::move,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::move
+                    &WindowPane::move,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::move
                 }
             },
             {
                 'j',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::no_op
                 }
             },
             {
                 '+',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::replace
+                    &WindowPane::insert,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::replace
                 }
             },
             {
                 K_TAB,
                 {
-                    &EditorWindow::move,
-                    &EditorWindow::move,
-                    &EditorWindow::no_op,
-                    &EditorWindow::move
+                    &WindowPane::move,
+                    &WindowPane::move,
+                    &WindowPane::no_op,
+                    &WindowPane::move
                 }
             },
             {
                 'n',
                 {
-                    &EditorWindow::move,
-                    &EditorWindow::move,
-                    &EditorWindow::no_op,
-                    &EditorWindow::move
+                    &WindowPane::move,
+                    &WindowPane::move,
+                    &WindowPane::no_op,
+                    &WindowPane::move
                 }
             },
             {
                 KEY_BTAB,
                 {
-                    &EditorWindow::move,
-                    &EditorWindow::move,
-                    &EditorWindow::no_op,
-                    &EditorWindow::move
+                    &WindowPane::move,
+                    &WindowPane::move,
+                    &WindowPane::no_op,
+                    &WindowPane::move
                 }
             },
             {
                 'b',
                 {
-                    &EditorWindow::move,
-                    &EditorWindow::move,
-                    &EditorWindow::no_op,
-                    &EditorWindow::move
+                    &WindowPane::move,
+                    &WindowPane::move,
+                    &WindowPane::no_op,
+                    &WindowPane::move
                 }
             },
             {
                 'i',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::insert_mode,
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::insert_mode,
+                    &WindowPane::no_op,
+                    &WindowPane::no_op
                 }
             },
             {
                 'a',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::insert_mode,
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::insert_mode,
+                    &WindowPane::no_op,
+                    &WindowPane::no_op
                 }
             },
             {
                 'o',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op,
-                    &EditorWindow::visual_toggle_position,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::no_op,
+                    &WindowPane::visual_toggle_position,
+                    &WindowPane::no_op
                 }
             },
             {
                 'O',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op,
-                    &EditorWindow::visual_toggle_position,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::no_op,
+                    &WindowPane::visual_toggle_position,
+                    &WindowPane::no_op
                 }
             },
             {
                 's',  // Deletes char at cursor, like KEY_DC then to insert mode
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::insert_mode,
-                    &EditorWindow::visual_remove,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::insert_mode,
+                    &WindowPane::visual_remove,
+                    &WindowPane::no_op
                 }
             },
             {
                 'v',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::visual_mode,
-                    &EditorWindow::visual_cancel,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::visual_mode,
+                    &WindowPane::visual_cancel,
+                    &WindowPane::no_op
                 }
             },
             {
                 'y',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::yank,
-                    &EditorWindow::visual_yank,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::yank,
+                    &WindowPane::visual_yank,
+                    &WindowPane::no_op
                 }
             },
             {
                 'e',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::move,
-                    &EditorWindow::no_op,
-                    &EditorWindow::replace,
+                    &WindowPane::insert,
+                    &WindowPane::move,
+                    &WindowPane::no_op,
+                    &WindowPane::replace,
                 }
             },
             {
                 ':',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::command_mode,
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::command_mode,
+                    &WindowPane::no_op,
+                    &WindowPane::no_op
                 }
             },
         };
 };
 
 
-class EvalPane : public EditorWindow
+class EvalPane : public WindowPane
 {
     public:
         EvalPane(MatrixEditor* me, WINDOW* w);
@@ -1414,374 +1414,374 @@ class EvalPane : public EditorWindow
             'e', 'E', '^'
         };
 
-        map<int, EditorWindow::KeyModeAction> _key_mode_actions = {
+        map<int, WindowPane::KeyModeAction> _key_mode_actions = {
             {
                 K_ESCAPE,
                 { 
-                    &EditorWindow::edit_mode,
-                    &EditorWindow::cancel,
-                    &EditorWindow::visual_cancel,
-                    &EditorWindow::replace_cancel
+                    &WindowPane::edit_mode,
+                    &WindowPane::cancel,
+                    &WindowPane::visual_cancel,
+                    &WindowPane::replace_cancel
                 }
             },
             {
                 KEY_BACKSPACE,
                 {
-                    &EditorWindow::remove,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::replace_move
+                    &WindowPane::remove,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::replace_move
                 }
             },
             {
                 K_BACKSPACE1,
                 {
-                    &EditorWindow::remove,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::replace_move
+                    &WindowPane::remove,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::replace_move
                 }
             },
             {
                 K_BACKSPACE2,
                 {
-                    &EditorWindow::remove,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::replace_move
+                    &WindowPane::remove,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::replace_move
                 }
             },
             {
                 KEY_DC,
                 {
-                    &EditorWindow::remove,
-                    &EditorWindow::remove,
-                    &EditorWindow::visual_remove,
-                    &EditorWindow::no_op
+                    &WindowPane::remove,
+                    &WindowPane::remove,
+                    &WindowPane::visual_remove,
+                    &WindowPane::no_op
                 }
             },
             {
                 'x',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::remove,
-                    &EditorWindow::visual_remove,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::remove,
+                    &WindowPane::visual_remove,
+                    &WindowPane::no_op
                 }
             },
             {
                 'd',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::clear,
-                    &EditorWindow::visual_remove,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::clear,
+                    &WindowPane::visual_remove,
+                    &WindowPane::no_op
                 }
             },
             {
                 'D',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::clear_to_eol,
-                    &EditorWindow::visual_clear,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::clear_to_eol,
+                    &WindowPane::visual_clear,
+                    &WindowPane::no_op
                 }
             },
             {
                 'p',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::paste,
-                    &EditorWindow::visual_paste,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::paste,
+                    &WindowPane::visual_paste,
+                    &WindowPane::no_op
                 }
             },
             {
                 'P',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::paste,
-                    &EditorWindow::visual_paste,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::paste,
+                    &WindowPane::visual_paste,
+                    &WindowPane::no_op
                 }
             },
             {
                 'r',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::replace_mode,
-                    &EditorWindow::visual_replace,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::replace_mode,
+                    &WindowPane::visual_replace,
+                    &WindowPane::no_op
                 }
             },
             {
                 'R',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::replace_mode,
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op
+                    &WindowPane::insert,
+                    &WindowPane::replace_mode,
+                    &WindowPane::no_op,
+                    &WindowPane::no_op
                 }
             },
             {
                 K_NEWLINE,
                 {
-                    &EditorWindow::enter,
-                    &EditorWindow::enter,
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op
+                    &WindowPane::enter,
+                    &WindowPane::enter,
+                    &WindowPane::no_op,
+                    &WindowPane::no_op
                 }
             },
             {
                 KEY_ENTER,
                 {
-                    &EditorWindow::enter,
-                    &EditorWindow::enter,
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op
+                    &WindowPane::enter,
+                    &WindowPane::enter,
+                    &WindowPane::no_op,
+                    &WindowPane::no_op
                 }
             },
             {
                 KEY_HOME,
                 {
-                    &EditorWindow::move,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::no_op
+                    &WindowPane::move,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::no_op
                 }
             },
             {
                 '^',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::replace
+                    &WindowPane::insert,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::replace
                 }
             },
             {
                 '_',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::no_op
                 }
             },
             {
                 '$',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::no_op
                 }
             },
             {
                 'g',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::no_op
                 }
             },
             {
                 'G',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::no_op
                 }
             },
             {
                 KEY_LEFT,
                 {
-                    &EditorWindow::move,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::replace_move
+                    &WindowPane::move,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::replace_move
                 }
             },
             {
                 'h',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::no_op
                 }
             },
             {
                 KEY_RIGHT,
                 {
-                    &EditorWindow::move,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::replace_move
+                    &WindowPane::move,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::replace_move
                 }
             },
             {
                 'l',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::move,
-                    &EditorWindow::visual_move,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::move,
+                    &WindowPane::visual_move,
+                    &WindowPane::no_op
                 }
             },
             {
                 KEY_UP,
                 {
-                    &EditorWindow::move,
-                    &EditorWindow::move,
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op
+                    &WindowPane::move,
+                    &WindowPane::move,
+                    &WindowPane::no_op,
+                    &WindowPane::no_op
                 }
             },
             {
                 'k',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::no_op,
+                    &WindowPane::no_op,
+                    &WindowPane::no_op
                 }
             },
             {
                 '-',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op,
-                    &EditorWindow::replace,
+                    &WindowPane::insert,
+                    &WindowPane::no_op,
+                    &WindowPane::no_op,
+                    &WindowPane::replace,
                 }
             },
             {
                 KEY_DOWN,
                 {
-                    &EditorWindow::move,
-                    &EditorWindow::move,
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op
+                    &WindowPane::move,
+                    &WindowPane::move,
+                    &WindowPane::no_op,
+                    &WindowPane::no_op
                 }
             },
             {
                 'j',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::no_op,
+                    &WindowPane::no_op,
+                    &WindowPane::no_op
                 }
             },
             {
                 '+',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op,
-                    &EditorWindow::replace
+                    &WindowPane::insert,
+                    &WindowPane::no_op,
+                    &WindowPane::no_op,
+                    &WindowPane::replace
                 }
             },
             {
                 K_TAB,
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::no_op,
+                    &WindowPane::no_op,
+                    &WindowPane::no_op
                 }
             },
             {
                 KEY_BTAB,
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::no_op,
+                    &WindowPane::no_op,
+                    &WindowPane::no_op
                 }
             },
             {
                 'i',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::insert_mode,
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::insert_mode,
+                    &WindowPane::no_op,
+                    &WindowPane::no_op
                 }
             },
             {
                 'a',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::insert_mode,
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::insert_mode,
+                    &WindowPane::no_op,
+                    &WindowPane::no_op
                 }
             },
             {
                 'o',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op,
-                    &EditorWindow::visual_toggle_position,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::no_op,
+                    &WindowPane::visual_toggle_position,
+                    &WindowPane::no_op
                 }
             },
             {
                 'O',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op,
-                    &EditorWindow::visual_toggle_position,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::no_op,
+                    &WindowPane::visual_toggle_position,
+                    &WindowPane::no_op
                 }
             },
             {
                 's',  // Deletes char at cursor, like KEY_DC then to insert mode
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::insert_mode,
-                    &EditorWindow::visual_remove,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::insert_mode,
+                    &WindowPane::visual_remove,
+                    &WindowPane::no_op
                 }
             },
             {
                 'v',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::visual_mode,
-                    &EditorWindow::visual_cancel,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::visual_mode,
+                    &WindowPane::visual_cancel,
+                    &WindowPane::no_op
                 }
             },
             {
                 'y',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::yank,
-                    &EditorWindow::visual_yank,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::yank,
+                    &WindowPane::visual_yank,
+                    &WindowPane::no_op
                 }
             },
             {
                 'e',
                 {
-                    &EditorWindow::insert,
-                    &EditorWindow::move,
-                    &EditorWindow::no_op,
-                    &EditorWindow::replace,
+                    &WindowPane::insert,
+                    &WindowPane::move,
+                    &WindowPane::no_op,
+                    &WindowPane::replace,
                 }
             },
             {
                 ':',
                 {
-                    &EditorWindow::no_op,
-                    &EditorWindow::command_mode,
-                    &EditorWindow::no_op,
-                    &EditorWindow::no_op
+                    &WindowPane::no_op,
+                    &WindowPane::command_mode,
+                    &WindowPane::no_op,
+                    &WindowPane::no_op
                 }
             },
         };
@@ -1844,7 +1844,7 @@ class MatrixEditor
         size_t _current_eval_pane;
         vector<EvalPane> _eval_panes;
 
-        EditorWindow* _current_editor_window;
+        WindowPane* _current_editor_window;
 
         int _h, _w, _y, _x;
         WINDOW* _matrix_pane_header;

@@ -948,14 +948,14 @@ string MatrixEntry::info(void)
     return s;
 }
 
-EditorWindow::EditorWindow(MatrixEditor* me, WINDOW* w)
+WindowPane::WindowPane(MatrixEditor* me, WINDOW* w)
     : _me(me), _win(w), _color_pair(ColorPair(COLOR_BLACK, COLOR_WHITE)),
     _clear_toggle(1), _yank_toggle(1)
 {
     wbkgd(_win, COLOR_PAIR(_color_pair.pair_number()));
 }
 
-EditorWindow::EditorWindow(const EditorWindow& rhs)
+WindowPane::WindowPane(const WindowPane& rhs)
     : _me(rhs._me), _win(rhs._win), _color_pair(rhs._color_pair),
     _clear_toggle(rhs._clear_toggle), _yank_toggle(rhs._yank_toggle),
     _replaced(rhs._replaced)
@@ -963,7 +963,7 @@ EditorWindow::EditorWindow(const EditorWindow& rhs)
     wbkgd(_win, COLOR_PAIR(_color_pair.pair_number()));
 }
 
-EditorWindow& EditorWindow::operator=(const EditorWindow& rhs)
+WindowPane& WindowPane::operator=(const WindowPane& rhs)
 {
     if (this == &rhs)
         return *this;
@@ -978,24 +978,24 @@ EditorWindow& EditorWindow::operator=(const EditorWindow& rhs)
     return *this;
 }
 
-WINDOW* EditorWindow::window(void)
+WINDOW* WindowPane::window(void)
 {
     return _win;
 }
 
-ColorPair& EditorWindow::color(void)
+ColorPair& WindowPane::color(void)
 {
     return _color_pair;
 }
 
-EditorWindow::KeyAction EditorWindow::key_action(int ch, EditorMode m)
+WindowPane::KeyAction WindowPane::key_action(int ch, EditorMode m)
 {
     if (_key_mode_actions.find(ch) == _key_mode_actions.end())
     {
         if ((m == MODE_INSERT) && is_print(ch))
-            return &EditorWindow::insert;
+            return &WindowPane::insert;
         else if ((m == MODE_REPLACE) && is_print(ch))
-            return &EditorWindow::replace;
+            return &WindowPane::replace;
     }
     else
     {
@@ -1012,63 +1012,63 @@ EditorWindow::KeyAction EditorWindow::key_action(int ch, EditorMode m)
         }
     }
 
-    return &EditorWindow::no_op;
+    return &WindowPane::no_op;
 }
 
-void EditorWindow::we_addstr(string s)
+void WindowPane::we_addstr(string s)
 {
     for (size_t i = 0; i < s.size(); i++)
         waddch(_win, s[i]);
 }
 
-bool EditorWindow::is_print(int ch)
+bool WindowPane::is_print(int ch)
 {
     return (isgraph(ch) || isspace(ch));
 }
 
-void EditorWindow::clear(void)
+void WindowPane::clear(void)
 {
     wbkgd(_win, COLOR_PAIR(_color_pair.pair_number()));
     wclear(_win);
 }
 
-void EditorWindow::redraw(void)
+void WindowPane::redraw(void)
 {
     this->refresh();
 }
 
-void EditorWindow::refresh(void)
+void WindowPane::refresh(void)
 {
     wrefresh(_win);
 }
 
-void EditorWindow::insert_mode(int ch)
+void WindowPane::insert_mode(int ch)
 {
     _me->set_mode(MODE_INSERT);
 }
 
-void EditorWindow::edit_mode(int ch)
+void WindowPane::edit_mode(int ch)
 {
     _me->set_mode(MODE_EDIT);
 }
 
-void EditorWindow::visual_mode(int ch)
+void WindowPane::visual_mode(int ch)
 {
     _me->set_mode(MODE_VISUAL);
 }
 
-void EditorWindow::replace_mode(int ch)
+void WindowPane::replace_mode(int ch)
 {
     _replaced.clear();
     _me->set_mode(MODE_REPLACE);
 }
 
-void EditorWindow::command_mode(int ch)
+void WindowPane::command_mode(int ch)
 {
     _me->command(ch);
 }
 
-void EditorWindow::cancel(int ch)
+void WindowPane::cancel(int ch)
 {
     _clear_toggle = 1;
     _yank_toggle = 1;
@@ -1076,77 +1076,77 @@ void EditorWindow::cancel(int ch)
     _me->set_mode(MODE_EDIT);
 }
 
-void EditorWindow::visual_cancel(int ch)
+void WindowPane::visual_cancel(int ch)
 {
     _me->set_mode(MODE_EDIT);
 }
 
-void EditorWindow::replace_cancel(int ch)
+void WindowPane::replace_cancel(int ch)
 {
     _replaced.clear();
     _me->set_mode(MODE_EDIT);
 }
 
-void EditorWindow::move(int ch)
+void WindowPane::move(int ch)
 {
 }
 
-void EditorWindow::insert(int ch)
+void WindowPane::insert(int ch)
 {
 }
 
-void EditorWindow::remove(int ch)
+void WindowPane::remove(int ch)
 {
 }
 
-void EditorWindow::enter(int ch)
+void WindowPane::enter(int ch)
 {
 }
 
-void EditorWindow::replace(int ch)
+void WindowPane::replace(int ch)
 {
 }
-void EditorWindow::clear(int ch)
+void WindowPane::clear(int ch)
 {
 }
-void EditorWindow::clear_to_eol(int ch)
+void WindowPane::clear_to_eol(int ch)
 {
 }
-void EditorWindow::yank(int ch)
+void WindowPane::yank(int ch)
 {
 }
-void EditorWindow::paste(int ch)
-{
-}
-
-void EditorWindow::replace_move(int ch)
+void WindowPane::paste(int ch)
 {
 }
 
-void EditorWindow::visual_move(int ch)
+void WindowPane::replace_move(int ch)
 {
 }
-void EditorWindow::visual_remove(int ch)
+
+void WindowPane::visual_move(int ch)
 {
 }
-void EditorWindow::visual_replace(int ch)
+void WindowPane::visual_remove(int ch)
 {
 }
-void EditorWindow::visual_clear(int ch)
+void WindowPane::visual_replace(int ch)
 {
 }
-void EditorWindow::visual_yank(int ch)
+void WindowPane::visual_clear(int ch)
 {
 }
-void EditorWindow::visual_paste(int ch)
+void WindowPane::visual_yank(int ch)
 {
 }
-void EditorWindow::visual_toggle_position(int ch)
+void WindowPane::visual_paste(int ch)
+{
+}
+void WindowPane::visual_toggle_position(int ch)
 {
 }
 
 MatrixPane::MatrixPane(size_t n, MatrixEditor* me, WINDOW* w)
-    : EditorWindow(me, w), _extra_data(0), _mp(MP_COEFFICIENT),
+    : WindowPane(me, w), _extra_data(0), _mp(MP_COEFFICIENT),
     _n(n), _c_i(1), _c_j(1), _s_i(1), _v_i(1), _e_i(0),
     _c_col_width(10), _s_col_width(3), _v_col_width(3), _cur_hist_entry(0)
 {
@@ -1193,7 +1193,7 @@ MatrixPane::MatrixPane(size_t n, MatrixEditor* me, WINDOW* w)
 
 #if 0
 MatrixPane::MatrixPane(size_t n, MatrixEditor* me, WINDOW* w)
-    : EditorWindow(me, w), _extra_data(0), _mp(MP_COEFFICIENT),
+    : WindowPane(me, w), _extra_data(0), _mp(MP_COEFFICIENT),
     _n(n), _c_i(1), _c_j(1), _s_i(1), _v_i(1), _e_i(0),
     _c_col_width(10), _s_col_width(3), _v_col_width(3), _cur_hist_entry(0)
 {
@@ -1224,7 +1224,7 @@ MatrixPane::MatrixPane(size_t n, MatrixEditor* me, WINDOW* w)
 #endif
 
 MatrixPane::MatrixPane(const MatrixPane& rhs)
-    : EditorWindow(rhs),
+    : WindowPane(rhs),
     _c_matrix(rhs._c_matrix), _s_vector(rhs._s_vector), _v_vector(rhs._v_vector), _mp(rhs._mp),
     _n(rhs._n), _c_i(rhs._c_i), _c_j(rhs._c_j), _s_i(rhs._s_i), _v_i(rhs._v_i), _e_i(rhs._e_i),
     _c_col_width(rhs._c_col_width), _s_col_width(rhs._s_col_width), _v_col_width(rhs._v_col_width),
@@ -1248,7 +1248,7 @@ MatrixPane& MatrixPane::operator=(const MatrixPane& rhs)
     if (this == &rhs)
         return *this;
 
-    EditorWindow::operator=(rhs);
+    WindowPane::operator=(rhs);
 
     _c_matrix = rhs._c_matrix;
     _s_vector = rhs._s_vector;
@@ -1312,14 +1312,14 @@ bool MatrixPane::is_print(int ch)
     return (i != _valid_screen_chars.size());
 }
 
-EditorWindow::KeyAction MatrixPane::key_action(int ch, EditorMode m)
+WindowPane::KeyAction MatrixPane::key_action(int ch, EditorMode m)
 {
     if (_key_mode_actions.find(ch) == _key_mode_actions.end())
     {
         if ((m == MODE_INSERT) && is_print(ch))
-            return &EditorWindow::insert;
+            return &WindowPane::insert;
         else if ((m == MODE_REPLACE) && is_print(ch))
-            return &EditorWindow::replace;
+            return &WindowPane::replace;
     }
     else
     {
@@ -1336,7 +1336,7 @@ EditorWindow::KeyAction MatrixPane::key_action(int ch, EditorMode m)
         }
     }
 
-    return &EditorWindow::no_op;
+    return &WindowPane::no_op;
 }
 
 void MatrixPane::draw(void)
@@ -1587,12 +1587,12 @@ void MatrixPane::set(void)
 
 void MatrixPane::redraw(void)
 {
-    EditorWindow::clear();
+    WindowPane::clear();
 
     draw();
     set();
 
-    EditorWindow::refresh();
+    WindowPane::refresh();
 }
 
 void MatrixPane::refresh(void)
@@ -1602,12 +1602,12 @@ void MatrixPane::refresh(void)
 
     set();
 
-    EditorWindow::refresh();
+    WindowPane::refresh();
 }
 
 void MatrixPane::insert_mode(int ch)
 {
-    EditorWindow::insert_mode(ch);
+    WindowPane::insert_mode(ch);
 
     if (ch == 'a')
         right();
@@ -1615,14 +1615,14 @@ void MatrixPane::insert_mode(int ch)
 
 void MatrixPane::edit_mode(int ch)
 {
-    EditorWindow::edit_mode(ch);
+    WindowPane::edit_mode(ch);
 
     entry() << 1;
 }
 
 void MatrixPane::visual_mode(int ch)
 {
-    EditorWindow::visual_mode(ch);
+    WindowPane::visual_mode(ch);
 
     entry().vstart();
 }
@@ -1631,7 +1631,7 @@ void MatrixPane::replace_mode(int ch)
 {
     if (ch != 'r')
     {
-        EditorWindow::replace_mode(ch);
+        WindowPane::replace_mode(ch);
         return;
     }
 
@@ -2742,13 +2742,13 @@ void MatrixPane::solve(void)
 }
 
 EvalPane::EvalPane(MatrixEditor* me, WINDOW* w)
-    : EditorWindow(me, w), _win_offset(2), _e_entry(EvalEntry(_win, Cursor(0, _win_offset))),
+    : WindowPane(me, w), _win_offset(2), _e_entry(EvalEntry(_win, Cursor(0, _win_offset))),
     _cur_hist_entry(0)
 {
 }
 
 EvalPane::EvalPane(const EvalPane& rhs)
-    : EditorWindow(rhs), _win_offset(rhs._win_offset), _e_entry(rhs._e_entry),
+    : WindowPane(rhs), _win_offset(rhs._win_offset), _e_entry(rhs._e_entry),
     _history(rhs._history), _cur_hist_entry(rhs._cur_hist_entry)
 {
 }
@@ -2780,14 +2780,14 @@ bool EvalPane::is_print(int ch)
     return (i != _valid_screen_chars.size());
 }
 
-EditorWindow::KeyAction EvalPane::key_action(int ch, EditorMode m)
+WindowPane::KeyAction EvalPane::key_action(int ch, EditorMode m)
 {
     if (_key_mode_actions.find(ch) == _key_mode_actions.end())
     {
         if ((m == MODE_INSERT) && is_print(ch))
-            return &EditorWindow::insert;
+            return &WindowPane::insert;
         else if ((m == MODE_REPLACE) && is_print(ch))
-            return &EditorWindow::replace;
+            return &WindowPane::replace;
     }
     else
     {
@@ -2804,7 +2804,7 @@ EditorWindow::KeyAction EvalPane::key_action(int ch, EditorMode m)
         }
     }
 
-    return &EditorWindow::no_op;
+    return &WindowPane::no_op;
 }
 
 void EvalPane::draw(void)
@@ -2833,24 +2833,24 @@ void EvalPane::set(void)
 
 void EvalPane::redraw(void)
 {
-    EditorWindow::clear();
+    WindowPane::clear();
 
     draw();
     set();
 
-    EditorWindow::refresh();
+    WindowPane::refresh();
 }
 
 void EvalPane::refresh(void)
 {
     set();
 
-    EditorWindow::refresh();
+    WindowPane::refresh();
 }
 
 void EvalPane::insert_mode(int ch)
 {
-    EditorWindow::insert_mode(ch);
+    WindowPane::insert_mode(ch);
 
     if (ch == 'a')
         right();
@@ -2858,14 +2858,14 @@ void EvalPane::insert_mode(int ch)
 
 void EvalPane::edit_mode(int ch)
 {
-    EditorWindow::edit_mode(ch);
+    WindowPane::edit_mode(ch);
 
     _e_entry << 1;
 }
 
 void EvalPane::visual_mode(int ch)
 {
-    EditorWindow::visual_mode(ch);
+    WindowPane::visual_mode(ch);
 
     _e_entry.vstart();
 }
@@ -2874,7 +2874,7 @@ void EvalPane::replace_mode(int ch)
 {
     if (ch != 'r')
     {
-        EditorWindow::replace_mode(ch);
+        WindowPane::replace_mode(ch);
         return;
     }
 
@@ -3796,7 +3796,7 @@ void MatrixEditor::loop(void)
         if (ch == KEY_RESIZE)
             continue;
 
-        EditorWindow::KeyAction ka(_current_editor_window->key_action(ch, _mode));
+        WindowPane::KeyAction ka(_current_editor_window->key_action(ch, _mode));
         MEW_CALL(*_current_editor_window, ka)(ch);
 
         if (_exit_loop)
