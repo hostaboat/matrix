@@ -447,7 +447,7 @@ class EditorWindow
         virtual void visual_clear(int ch);
         virtual void visual_yank(int ch);
         virtual void visual_paste(int ch);
-        virtual void visual_toggle_position(int ch);
+        virtual void visual_toggle_position(int ch) = 0;
 
         virtual void no_op(int ch) {}
 

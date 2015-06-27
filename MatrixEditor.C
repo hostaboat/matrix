@@ -2071,31 +2071,40 @@ void MatrixPane::move(int ch)
             break;
 
         case KEY_UP:
-            if (!_history.empty())
-            {
-                if ((_cur_hist_entry - 1) > 0)
-                    entry() = _history[--_cur_hist_entry];
-            }
+            if (_history.empty())
+                break;
+
+            if (_cur_hist_entry >= 1)
+                entry() = _history[--_cur_hist_entry];
+
             break;
 
         case KEY_DOWN:
-            if (!_history.empty())
-            {
-                if ((_cur_hist_entry + 1) < _history.size())
-                    entry() = _history[++_cur_hist_entry];
-            }
+            if (_history.empty())
+                break;
+
+            if (_cur_hist_entry < (_history.size() - 1))
+                entry() = _history[++_cur_hist_entry];
+
             break;
 
         case 'e':
-            if (_cur_hist_entry < _history.size())
-            {
-                _history.erase(_history.begin() + _cur_hist_entry);
-                if (_cur_hist_entry == _history.size())
-                    _cur_hist_entry--;
+            if (_history.empty())
+                break;
 
-                if (!_history.empty())
-                    entry() = _history[_cur_hist_entry];
+            _history.erase(_history.begin() + _cur_hist_entry);
+
+            if (_history.empty())
+            {
+                entry().clear();
+                break;
             }
+
+            if (_cur_hist_entry == _history.size())
+                _cur_hist_entry--;
+
+            entry() = _history[_cur_hist_entry];
+
             break;
     }
 }
@@ -3028,31 +3037,40 @@ void EvalPane::move(int ch)
             break;
 
         case KEY_UP:
-            if (!_history.empty())
-            {
-                if ((_cur_hist_entry - 1) > 0)
-                    _e_entry = _history[--_cur_hist_entry];
-            }
+            if (_history.empty())
+                break;
+
+            if (_cur_hist_entry >= 1)
+                _e_entry = _history[--_cur_hist_entry];
+
             break;
 
         case KEY_DOWN:
-            if (!_history.empty())
-            {
-                if ((_cur_hist_entry + 1) < _history.size())
-                    _e_entry = _history[++_cur_hist_entry];
-            }
+            if (_history.empty())
+                break;
+
+            if (_cur_hist_entry < (_history.size() - 1))
+                _e_entry = _history[++_cur_hist_entry];
+
             break;
 
         case 'e':
-            if (_cur_hist_entry < _history.size())
-            {
-                _history.erase(_history.begin() + _cur_hist_entry);
-                if (_cur_hist_entry == _history.size())
-                    _cur_hist_entry--;
+            if (_history.empty())
+                break;
 
-                if (!_history.empty())
-                    _e_entry = _history[_cur_hist_entry];
+            _history.erase(_history.begin() + _cur_hist_entry);
+
+            if (_history.empty())
+            {
+                _e_entry.clear();
+                break;
             }
+
+            if (_cur_hist_entry == _history.size())
+                _cur_hist_entry--;
+
+            _e_entry = _history[_cur_hist_entry];
+
             break;
     }
 }
