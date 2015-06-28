@@ -420,43 +420,6 @@ class WindowPane
         WindowPane& operator=(const WindowPane& rhs);
         ~WindowPane(void) {};
 
-        virtual void insert_mode(int ch);
-        virtual void edit_mode(int ch);
-        virtual void visual_mode(int ch);
-        virtual void replace_mode(int ch);
-        virtual void command_mode(int ch);
-
-        virtual void cancel(int ch);
-        virtual void visual_cancel(int ch);
-        virtual void replace_cancel(int ch);
-
-        virtual void move(int ch);
-        virtual void insert(int ch);
-        virtual void remove(int ch);
-        virtual void replace(int ch);
-        virtual void clear(int ch);
-        virtual void clear_to_eol(int ch);
-        virtual void yank(int ch);
-        virtual void paste(int ch);
-        virtual void replace_move(int ch);
-        virtual void enter(int ch);
-
-        virtual void visual_move(int ch);
-        virtual void visual_remove(int ch);
-        virtual void visual_replace(int ch);
-        virtual void visual_clear(int ch);
-        virtual void visual_yank(int ch);
-        virtual void visual_paste(int ch);
-        virtual void visual_toggle_position(int ch) = 0;
-
-        virtual void no_op(int ch) {}
-
-        virtual void clear(void);
-        virtual void redraw(void);
-        virtual void refresh(void);
-        virtual bool is_print(int ch);
-        virtual void we_addstr(string s);
-
         typedef void (WindowPane::*KeyAction)(int ch);
 #define MEW_CALL(object, member_func)   ((object).*(member_func))
         struct KeyModeAction
@@ -469,6 +432,76 @@ class WindowPane
 
         virtual KeyAction key_action(int ch, EditorMode m);
 
+        virtual bool is_print(int ch);
+        virtual void we_addstr(string s);
+
+        virtual WindowEntry& entry(size_t row, size_t col = 1) = 0;
+        virtual WindowEntry& entry(void) = 0;
+
+        virtual void set(void);
+        virtual void draw(void);
+        virtual void clear(void);
+        virtual void redraw(void);
+        virtual void refresh(void);
+
+        virtual void insert_mode(int ch);
+        virtual void edit_mode(int ch);
+        virtual void visual_mode(int ch);
+        virtual void replace_mode(int ch);
+        virtual void command_mode(int ch);
+
+        virtual void cancel(int ch);
+
+        virtual void insert(int ch);
+        virtual void remove(int ch);
+        virtual void remove_left(int ch);
+        virtual void clear_line(int ch);
+        virtual void clear_to_eol(int ch);
+        virtual void yank(int ch);
+        virtual void paste(int ch);
+
+        virtual void move(int ch);
+        virtual void left(int ch);
+        virtual void right(int ch);
+        virtual void up(int ch);
+        virtual void down(int ch);
+        virtual void prev(int ch);
+        virtual void next(int ch);
+        virtual void line_begin(int ch);
+        virtual void line_end(int ch);
+        virtual void pane_begin(int ch);
+        virtual void pane_end(int ch);
+
+        virtual void history_prev(int ch);
+        virtual void history_next(int ch);
+        virtual void history_delete(int ch);
+
+        virtual void visual_cancel(int ch);
+        virtual void visual_move(int ch);
+        virtual void visual_left(int ch);
+        virtual void visual_right(int ch);
+        virtual void visual_up(int ch);
+        virtual void visual_down(int ch);
+        virtual void visual_line_begin(int ch);
+        virtual void visual_line_end(int ch);
+        virtual void visual_pane_begin(int ch);
+        virtual void visual_pane_end(int ch);
+
+        virtual void visual_remove(int ch);
+        virtual void visual_replace(int ch);
+        virtual void visual_clear(int ch);
+        virtual void visual_yank(int ch);
+        virtual void visual_paste(int ch);
+        virtual void visual_toggle(int ch);
+
+        virtual void replace_cancel(int ch);
+        virtual void replace(int ch);
+        virtual void replace_move(int ch);
+        virtual void replace_one(int ch);
+
+        virtual void special(int ch) {}
+        virtual void no_op(int ch) {}
+
         WINDOW* window(void);
         ColorPair& color(void);
 
@@ -479,6 +512,8 @@ class WindowPane
         int _clear_toggle;
         int _yank_toggle;
         string _replaced;
+        vector<string> _history;
+        size_t _cur_hist_entry;
 
     private:
         map<int, KeyModeAction> _key_mode_actions = {
@@ -494,27 +529,27 @@ class WindowPane
             {
                 KEY_BACKSPACE,
                 {
-                    &WindowPane::remove,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::remove_left,
+                    &WindowPane::left,
+                    &WindowPane::visual_left,
                     &WindowPane::move
                 }
             },
             {
                 K_BACKSPACE1,
                 {
-                    &WindowPane::remove,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::remove_left,
+                    &WindowPane::left,
+                    &WindowPane::visual_left,
                     &WindowPane::move
                 }
             },
             {
                 K_BACKSPACE2,
                 {
-                    &WindowPane::remove,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::remove_left,
+                    &WindowPane::left,
+                    &WindowPane::visual_left,
                     &WindowPane::move
                 }
             },
@@ -540,7 +575,7 @@ class WindowPane
                 'd',
                 {
                     &WindowPane::insert,
-                    &WindowPane::clear,
+                    &WindowPane::clear_line,
                     &WindowPane::visual_remove,
                     &WindowPane::replace
                 }
@@ -576,7 +611,7 @@ class WindowPane
                 'r',
                 {
                     &WindowPane::insert,
-                    &WindowPane::replace_mode,
+                    &WindowPane::replace_one,
                     &WindowPane::visual_replace,
                     &WindowPane::replace
                 }
@@ -594,8 +629,8 @@ class WindowPane
                 K_NEWLINE,
                 {
                     &WindowPane::insert,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::down,
+                    &WindowPane::visual_down,
                     &WindowPane::replace
                 }
             },
@@ -603,17 +638,17 @@ class WindowPane
                 KEY_ENTER,
                 {
                     &WindowPane::insert,
-                    &WindowPane::move,
-                    &WindowPane::no_op,
+                    &WindowPane::down,
+                    &WindowPane::visual_down,
                     &WindowPane::replace
                 }
             },
             {
                 KEY_HOME,
                 {
-                    &WindowPane::move,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::line_begin,
+                    &WindowPane::line_begin,
+                    &WindowPane::visual_line_begin,
                     &WindowPane::replace,
                 }
             },
@@ -621,8 +656,8 @@ class WindowPane
                 '^',
                 {
                     &WindowPane::insert,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::line_begin,
+                    &WindowPane::visual_line_begin,
                     &WindowPane::replace
                 }
             },
@@ -630,8 +665,8 @@ class WindowPane
                 '_',
                 {
                     &WindowPane::insert,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::line_begin,
+                    &WindowPane::visual_line_begin,
                     &WindowPane::replace
                 }
             },
@@ -639,8 +674,8 @@ class WindowPane
                 '$',
                 {
                     &WindowPane::insert,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::line_end,
+                    &WindowPane::visual_line_end,
                     &WindowPane::replace
                 }
             },
@@ -648,8 +683,8 @@ class WindowPane
                 'g',
                 {
                     &WindowPane::insert,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::pane_begin,
+                    &WindowPane::visual_pane_begin,
                     &WindowPane::replace
                 }
             },
@@ -657,17 +692,17 @@ class WindowPane
                 'G',
                 {
                     &WindowPane::insert,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::pane_end,
+                    &WindowPane::visual_pane_end,
                     &WindowPane::replace
                 }
             },
             {
                 KEY_LEFT,
                 {
-                    &WindowPane::move,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::left,
+                    &WindowPane::left,
+                    &WindowPane::visual_left,
                     &WindowPane::move
                 }
             },
@@ -675,17 +710,17 @@ class WindowPane
                 'h',
                 {
                     &WindowPane::insert,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::left,
+                    &WindowPane::visual_left,
                     &WindowPane::replace
                 }
             },
             {
                 KEY_RIGHT,
                 {
-                    &WindowPane::move,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::right,
+                    &WindowPane::right,
+                    &WindowPane::visual_right,
                     &WindowPane::move
                 }
             },
@@ -693,17 +728,17 @@ class WindowPane
                 'l',
                 {
                     &WindowPane::insert,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::right,
+                    &WindowPane::visual_right,
                     &WindowPane::replace
                 }
             },
             {
                 KEY_UP,
                 {
-                    &WindowPane::move,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::up,
+                    &WindowPane::up,
+                    &WindowPane::visual_up,
                     &WindowPane::move
                 }
             },
@@ -711,8 +746,8 @@ class WindowPane
                 'k',
                 {
                     &WindowPane::insert,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::up,
+                    &WindowPane::visual_up,
                     &WindowPane::replace
                 }
             },
@@ -720,17 +755,17 @@ class WindowPane
                 '-',
                 {
                     &WindowPane::insert,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::up,
+                    &WindowPane::visual_up,
                     &WindowPane::replace
                 }
             },
             {
                 KEY_DOWN,
                 {
-                    &WindowPane::move,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::down,
+                    &WindowPane::down,
+                    &WindowPane::visual_down,
                     &WindowPane::move
                 }
             },
@@ -738,8 +773,8 @@ class WindowPane
                 'j',
                 {
                     &WindowPane::insert,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::down,
+                    &WindowPane::visual_down,
                     &WindowPane::replace
                 }
             },
@@ -747,27 +782,27 @@ class WindowPane
                 '+',
                 {
                     &WindowPane::insert,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::down,
+                    &WindowPane::visual_down,
                     &WindowPane::replace
                 }
             },
             {
                 K_TAB,
                 {
-                    &WindowPane::move,
+                    &WindowPane::insert,
                     &WindowPane::no_op,
                     &WindowPane::no_op,
-                    &WindowPane::no_op
+                    &WindowPane::replace
                 }
             },
             {
                 KEY_BTAB,
                 {
-                    &WindowPane::move,
+                    &WindowPane::insert,
                     &WindowPane::no_op,
                     &WindowPane::no_op,
-                    &WindowPane::no_op
+                    &WindowPane::replace
                 }
             },
             {
@@ -792,8 +827,8 @@ class WindowPane
                 'o',
                 {
                     &WindowPane::insert,
-                    &WindowPane::no_op,
-                    &WindowPane::visual_toggle_position,
+                    &WindowPane::insert_mode,
+                    &WindowPane::visual_toggle,
                     &WindowPane::replace
                 }
             },
@@ -801,13 +836,13 @@ class WindowPane
                 'O',
                 {
                     &WindowPane::insert,
-                    &WindowPane::no_op,
-                    &WindowPane::visual_toggle_position,
+                    &WindowPane::insert_mode,
+                    &WindowPane::visual_toggle,
                     &WindowPane::replace
                 }
             },
             {
-                's',  // Deletes char at cursor, like KEY_DC then to insert mode
+                's',
                 {
                     &WindowPane::insert,
                     &WindowPane::insert_mode,
@@ -853,68 +888,81 @@ class MatrixPane : public WindowPane
         MatrixPane& operator=(const MatrixPane& rhs);
         ~MatrixPane(void);
 
-        virtual void insert_mode(int ch);
-        virtual void edit_mode(int ch);
-        virtual void visual_mode(int ch);
-        virtual void replace_mode(int ch);
+        virtual KeyAction key_action(int ch, EditorMode m);
+
+        virtual bool is_print(int ch);
+        virtual void we_addstr(string s);
+
+        virtual WindowEntry& entry(size_t row, size_t col = 1);
+        virtual WindowEntry& entry(void);
+
+        virtual void set(void);
+        virtual void draw(void);
+        //virtual void clear(void);
+        //virtual void redraw(void);
+        virtual void refresh(void);
+
+        bool adjust(size_t width);
+
+        //virtual void insert_mode(int ch);
+        //virtual void edit_mode(int ch);
+        //virtual void visual_mode(int ch);
+        //virtual void replace_mode(int ch);
         //virtual void command_mode(int ch);
 
         //virtual void cancel(int ch);
-        virtual void visual_cancel(int ch);
-        //virtual void replace_cancel(int ch);
 
-        virtual void move(int ch);
         virtual void insert(int ch);
         virtual void remove(int ch);
-        virtual void replace(int ch);
-        virtual void clear(int ch);
-        virtual void clear_to_eol(int ch);
-        virtual void yank(int ch);
-        virtual void paste(int ch);
-        virtual void replace_move(int ch);
-        virtual void enter(int ch);
+        //virtual void remove_left(int ch);
+        //virtual void clear_line(int ch);
+        //virtual void clear_to_eol(int ch);
+        //virtual void yank(int ch);
+        //virtual void paste(int ch);
 
-        virtual void visual_move(int ch);
-        virtual void visual_remove(int ch);
-        virtual void visual_replace(int ch);
-        virtual void visual_clear(int ch);
-        virtual void visual_yank(int ch);
-        virtual void visual_paste(int ch);
-        virtual void visual_toggle_position(int ch);
+        //virtual void move(int ch);
+        //virtual void left(int ch);
+        //virtual void right(int ch);
+        virtual void up(int ch);
+        virtual void down(int ch);
+        virtual void prev(int ch);
+        virtual void next(int ch);
+        //virtual void line_begin(int ch);
+        //virtual void line_end(int ch);
+        virtual void pane_begin(int ch);
+        virtual void pane_end(int ch);
+
+        //virtual void history_prev(int ch);
+        //virtual void history_next(int ch);
+        //virtual void history_delete(int ch);
+
+        //virtual void visual_cancel(int ch);
+        //virtual void visual_move(int ch);
+        //virtual void visual_left(int ch);
+        //virtual void visual_right(int ch);
+        //virtual void visual_up(int ch);
+        //virtual void visual_down(int ch);
+        //virtual void visual_line_begin(int ch);
+        //virtual void visual_line_end(int ch);
+        //virtual void visual_pane_begin(int ch);
+        //virtual void visual_pane_end(int ch);
+
+        //virtual void visual_remove(int ch);
+        //virtual void visual_replace(int ch);
+        //virtual void visual_clear(int ch);
+        //virtual void visual_yank(int ch);
+        //virtual void visual_paste(int ch);
+        //virtual void visual_toggle(int ch);
+
+        //virtual void replace_cancel(int ch);
+        //virtual void replace(int ch);
+        //virtual void replace_move(int ch);
+        //virtual void replace_one(int ch);
+
+        //virtual void replace_cancel(int ch);
 
         //virtual void no_op(int ch) {}
-
-        //virtual void clear(void);
-        virtual void redraw(void);
-        virtual void refresh(void);
-        virtual bool is_print(int ch);
-        virtual KeyAction key_action(int ch, EditorMode m);
-        virtual void we_addstr(string s);
-
-        void draw(void);
-        void set(void);
-
-        WindowEntry& entry(size_t row, size_t col);
-        WindowEntry& entry(void);
-        bool adjust(size_t width);
-
-        void next(void);
-        void prev(void);
-        void up(void);
-        void down(void);
-        void right(void);
-        void left(void);
-        void begin(void);
-        void end(void);
-        void first(void);
-        void last(void);
-
-        void vright(void);
-        void vleft(void);
-        void vbegin(void);
-        void vend(void);
-        void visual_done(void);
-
+        virtual void special(int ch);
         void solve(void);
 
         enum MatrixPanePart
@@ -937,8 +985,6 @@ class MatrixPane : public WindowPane
         size_t _col_spacing = 1;
         size_t _vector_spacing = 3;
         size_t _header_rows = 2;
-        vector<string> _history;
-        size_t _cur_hist_entry;
         Matrix<Scientific> _last_A, _last_s, _last_v;
 
         vector<int> _valid_screen_chars = {
@@ -961,27 +1007,27 @@ class MatrixPane : public WindowPane
             {
                 KEY_BACKSPACE,
                 {
-                    &WindowPane::remove,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::remove_left,
+                    &WindowPane::left,
+                    &WindowPane::visual_left,
                     &WindowPane::replace_move
                 }
             },
             {
                 K_BACKSPACE1,
                 {
-                    &WindowPane::remove,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::remove_left,
+                    &WindowPane::left,
+                    &WindowPane::visual_left,
                     &WindowPane::replace_move
                 }
             },
             {
                 K_BACKSPACE2,
                 {
-                    &WindowPane::remove,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::remove_left,
+                    &WindowPane::left,
+                    &WindowPane::visual_left,
                     &WindowPane::replace_move
                 }
             },
@@ -1007,7 +1053,7 @@ class MatrixPane : public WindowPane
                 'd',
                 {
                     &WindowPane::no_op,
-                    &WindowPane::clear,
+                    &WindowPane::clear_line,
                     &WindowPane::visual_remove,
                     &WindowPane::no_op
                 }
@@ -1043,7 +1089,7 @@ class MatrixPane : public WindowPane
                 'r',
                 {
                     &WindowPane::no_op,
-                    &WindowPane::replace_mode,
+                    &WindowPane::replace_one,
                     &WindowPane::visual_replace,
                     &WindowPane::no_op
                 }
@@ -1060,8 +1106,8 @@ class MatrixPane : public WindowPane
             {
                 K_NEWLINE,
                 {
-                    &WindowPane::enter,
-                    &WindowPane::enter,
+                    &WindowPane::special,
+                    &WindowPane::special,
                     &WindowPane::no_op,
                     &WindowPane::no_op
                 }
@@ -1069,8 +1115,8 @@ class MatrixPane : public WindowPane
             {
                 KEY_ENTER,
                 {
-                    &WindowPane::enter,
-                    &WindowPane::enter,
+                    &WindowPane::special,
+                    &WindowPane::special,
                     &WindowPane::no_op,
                     &WindowPane::no_op
                 }
@@ -1078,9 +1124,9 @@ class MatrixPane : public WindowPane
             {
                 KEY_HOME,
                 {
-                    &WindowPane::move,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::line_begin,
+                    &WindowPane::line_begin,
+                    &WindowPane::visual_line_begin,
                     &WindowPane::no_op
                 }
             },
@@ -1088,8 +1134,8 @@ class MatrixPane : public WindowPane
                 '^',
                 {
                     &WindowPane::insert,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::line_begin,
+                    &WindowPane::visual_line_begin,
                     &WindowPane::replace
                 }
             },
@@ -1097,8 +1143,8 @@ class MatrixPane : public WindowPane
                 '_',
                 {
                     &WindowPane::no_op,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::line_begin,
+                    &WindowPane::visual_line_begin,
                     &WindowPane::no_op
                 }
             },
@@ -1106,8 +1152,8 @@ class MatrixPane : public WindowPane
                 '$',
                 {
                     &WindowPane::no_op,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::line_end,
+                    &WindowPane::visual_line_end,
                     &WindowPane::no_op
                 }
             },
@@ -1115,8 +1161,8 @@ class MatrixPane : public WindowPane
                 'g',
                 {
                     &WindowPane::no_op,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::pane_begin,
+                    &WindowPane::visual_pane_begin,
                     &WindowPane::no_op
                 }
             },
@@ -1124,17 +1170,17 @@ class MatrixPane : public WindowPane
                 'G',
                 {
                     &WindowPane::no_op,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::pane_end,
+                    &WindowPane::visual_pane_end,
                     &WindowPane::no_op
                 }
             },
             {
                 KEY_LEFT,
                 {
-                    &WindowPane::move,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::left,
+                    &WindowPane::left,
+                    &WindowPane::visual_left,
                     &WindowPane::replace_move
                 }
             },
@@ -1142,17 +1188,17 @@ class MatrixPane : public WindowPane
                 'h',
                 {
                     &WindowPane::no_op,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::left,
+                    &WindowPane::visual_left,
                     &WindowPane::no_op
                 }
             },
             {
                 KEY_RIGHT,
                 {
-                    &WindowPane::move,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::right,
+                    &WindowPane::right,
+                    &WindowPane::visual_right,
                     &WindowPane::replace_move
                 }
             },
@@ -1160,26 +1206,26 @@ class MatrixPane : public WindowPane
                 'l',
                 {
                     &WindowPane::no_op,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::right,
+                    &WindowPane::visual_right,
                     &WindowPane::no_op
                 }
             },
             {
                 KEY_UP,
                 {
-                    &WindowPane::move,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
-                    &WindowPane::move
+                    &WindowPane::history_prev,
+                    &WindowPane::history_prev,
+                    &WindowPane::no_op,
+                    &WindowPane::no_op
                 }
             },
             {
                 'k',
                 {
                     &WindowPane::no_op,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::up,
+                    &WindowPane::no_op,
                     &WindowPane::no_op
                 }
             },
@@ -1187,26 +1233,26 @@ class MatrixPane : public WindowPane
                 '-',
                 {
                     &WindowPane::insert,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::up,
+                    &WindowPane::no_op,
                     &WindowPane::replace
                 }
             },
             {
                 KEY_DOWN,
                 {
-                    &WindowPane::move,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
-                    &WindowPane::move
+                    &WindowPane::history_next,
+                    &WindowPane::history_next,
+                    &WindowPane::no_op,
+                    &WindowPane::no_op
                 }
             },
             {
                 'j',
                 {
                     &WindowPane::no_op,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::down,
+                    &WindowPane::no_op,
                     &WindowPane::no_op
                 }
             },
@@ -1214,45 +1260,45 @@ class MatrixPane : public WindowPane
                 '+',
                 {
                     &WindowPane::insert,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::down,
+                    &WindowPane::no_op,
                     &WindowPane::replace
                 }
             },
             {
                 K_TAB,
                 {
-                    &WindowPane::move,
-                    &WindowPane::move,
+                    &WindowPane::next,
+                    &WindowPane::next,
                     &WindowPane::no_op,
-                    &WindowPane::move
+                    &WindowPane::no_op
                 }
             },
             {
                 'n',
                 {
-                    &WindowPane::move,
-                    &WindowPane::move,
+                    &WindowPane::next,
+                    &WindowPane::next,
                     &WindowPane::no_op,
-                    &WindowPane::move
+                    &WindowPane::no_op,
                 }
             },
             {
                 KEY_BTAB,
                 {
-                    &WindowPane::move,
-                    &WindowPane::move,
+                    &WindowPane::prev,
+                    &WindowPane::prev,
                     &WindowPane::no_op,
-                    &WindowPane::move
+                    &WindowPane::no_op
                 }
             },
             {
                 'b',
                 {
-                    &WindowPane::move,
-                    &WindowPane::move,
+                    &WindowPane::prev,
+                    &WindowPane::prev,
                     &WindowPane::no_op,
-                    &WindowPane::move
+                    &WindowPane::no_op
                 }
             },
             {
@@ -1278,7 +1324,7 @@ class MatrixPane : public WindowPane
                 {
                     &WindowPane::no_op,
                     &WindowPane::no_op,
-                    &WindowPane::visual_toggle_position,
+                    &WindowPane::visual_toggle,
                     &WindowPane::no_op
                 }
             },
@@ -1287,12 +1333,12 @@ class MatrixPane : public WindowPane
                 {
                     &WindowPane::no_op,
                     &WindowPane::no_op,
-                    &WindowPane::visual_toggle_position,
+                    &WindowPane::visual_toggle,
                     &WindowPane::no_op
                 }
             },
             {
-                's',  // Deletes char at cursor, like KEY_DC then to insert mode
+                's',
                 {
                     &WindowPane::no_op,
                     &WindowPane::insert_mode,
@@ -1322,7 +1368,7 @@ class MatrixPane : public WindowPane
                 'e',
                 {
                     &WindowPane::insert,
-                    &WindowPane::move,
+                    &WindowPane::history_delete,
                     &WindowPane::no_op,
                     &WindowPane::replace,
                 }
@@ -1348,64 +1394,83 @@ class EvalPane : public WindowPane
         EvalPane& operator=(const EvalPane& rhs);
         ~EvalPane(void) {}
 
-        virtual void insert_mode(int ch);
-        virtual void edit_mode(int ch);
-        virtual void visual_mode(int ch);
-        virtual void replace_mode(int ch);
+        virtual KeyAction key_action(int ch, EditorMode m);
+
+        virtual bool is_print(int ch);
+        virtual void we_addstr(string s);
+
+        virtual WindowEntry& entry(size_t row, size_t col = 1);
+        virtual WindowEntry& entry(void);
+
+        //virtual void set(void);
+        virtual void draw(void);
+        //virtual void clear(void);
+        //virtual void redraw(void);
+        //virtual void refresh(void);
+
+        //virtual void insert_mode(int ch);
+        //virtual void edit_mode(int ch);
+        //virtual void visual_mode(int ch);
+        //virtual void replace_mode(int ch);
         //virtual void command_mode(int ch);
 
         //virtual void cancel(int ch);
-        virtual void visual_cancel(int ch);
+
+        //virtual void insert(int ch);
+        //virtual void remove(int ch);
+        //virtual void remove_left(int ch);
+        //virtual void clear_line(int ch);
+        //virtual void clear_to_eol(int ch);
+        //virtual void yank(int ch);
+        //virtual void paste(int ch);
+
+        //virtual void move(int ch);
+        //virtual void left(int ch);
+        //virtual void right(int ch);
+        //virtual void up(int ch);
+        //virtual void down(int ch);
+        //virtual void prev(int ch);
+        //virtual void next(int ch);
+        //virtual void line_begin(int ch);
+        //virtual void line_end(int ch);
+        //virtual void pane_begin(int ch);
+        //virtual void pane_end(int ch);
+
+        //virtual void history_prev(int ch);
+        //virtual void history_next(int ch);
+        //virtual void history_delete(int ch);
+
+        //virtual void visual_cancel(int ch);
+        //virtual void visual_move(int ch);
+        //virtual void visual_left(int ch);
+        //virtual void visual_right(int ch);
+        //virtual void visual_up(int ch);
+        //virtual void visual_down(int ch);
+        //virtual void visual_line_begin(int ch);
+        //virtual void visual_line_end(int ch);
+        //virtual void visual_pane_begin(int ch);
+        //virtual void visual_pane_end(int ch);
+
+        //virtual void visual_remove(int ch);
+        //virtual void visual_replace(int ch);
+        //virtual void visual_clear(int ch);
+        //virtual void visual_yank(int ch);
+        //virtual void visual_paste(int ch);
+        //virtual void visual_toggle(int ch);
+
         //virtual void replace_cancel(int ch);
-
-        virtual void move(int ch);
-        virtual void insert(int ch);
-        virtual void remove(int ch);
-        virtual void replace(int ch);
-        virtual void clear(int ch);
-        virtual void clear_to_eol(int ch);
-        virtual void yank(int ch);
-        virtual void paste(int ch);
-        virtual void replace_move(int ch);
-        virtual void enter(int ch);
-
-        virtual void visual_move(int ch);
-        virtual void visual_remove(int ch);
-        virtual void visual_replace(int ch);
-        virtual void visual_clear(int ch);
-        virtual void visual_yank(int ch);
-        virtual void visual_paste(int ch);
-        virtual void visual_toggle_position(int ch);
+        //virtual void replace(int ch);
+        //virtual void replace_move(int ch);
+        //virtual void replace_one(int ch);
 
         //virtual void no_op(int ch) {}
-
-        //virtual void clear(void);
-        virtual void redraw(void);
-        virtual void refresh(void);
-        virtual bool is_print(int ch);
-        virtual KeyAction key_action(int ch, EditorMode m);
-        virtual void we_addstr(string s);
-
-        void draw(void);
-        void set(void);
-        void right(void);
-        void left(void);
-        void begin(void);
-        void end(void);
-
-        void vright(void);
-        void vleft(void);
-        void vbegin(void);
-        void vend(void);
-        void visual_done(void);
+        virtual void special(int ch);
 
         void solve(void);
 
     private:
         int _win_offset;
         EvalEntry _e_entry;
-        vector<string> _history;
-        size_t _cur_hist_entry;
 
         vector<int> _valid_screen_chars = {
             '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.',
@@ -1427,27 +1492,27 @@ class EvalPane : public WindowPane
             {
                 KEY_BACKSPACE,
                 {
-                    &WindowPane::remove,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::remove_left,
+                    &WindowPane::left,
+                    &WindowPane::visual_left,
                     &WindowPane::replace_move
                 }
             },
             {
                 K_BACKSPACE1,
                 {
-                    &WindowPane::remove,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::remove_left,
+                    &WindowPane::left,
+                    &WindowPane::visual_left,
                     &WindowPane::replace_move
                 }
             },
             {
                 K_BACKSPACE2,
                 {
-                    &WindowPane::remove,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::remove_left,
+                    &WindowPane::left,
+                    &WindowPane::visual_left,
                     &WindowPane::replace_move
                 }
             },
@@ -1473,7 +1538,7 @@ class EvalPane : public WindowPane
                 'd',
                 {
                     &WindowPane::no_op,
-                    &WindowPane::clear,
+                    &WindowPane::clear_line,
                     &WindowPane::visual_remove,
                     &WindowPane::no_op
                 }
@@ -1509,7 +1574,7 @@ class EvalPane : public WindowPane
                 'r',
                 {
                     &WindowPane::no_op,
-                    &WindowPane::replace_mode,
+                    &WindowPane::replace_one,
                     &WindowPane::visual_replace,
                     &WindowPane::no_op
                 }
@@ -1519,15 +1584,15 @@ class EvalPane : public WindowPane
                 {
                     &WindowPane::insert,
                     &WindowPane::replace_mode,
-                    &WindowPane::no_op,
+                    &WindowPane::visual_replace,
                     &WindowPane::no_op
                 }
             },
             {
                 K_NEWLINE,
                 {
-                    &WindowPane::enter,
-                    &WindowPane::enter,
+                    &WindowPane::special,
+                    &WindowPane::special,
                     &WindowPane::no_op,
                     &WindowPane::no_op
                 }
@@ -1535,8 +1600,8 @@ class EvalPane : public WindowPane
             {
                 KEY_ENTER,
                 {
-                    &WindowPane::enter,
-                    &WindowPane::enter,
+                    &WindowPane::special,
+                    &WindowPane::special,
                     &WindowPane::no_op,
                     &WindowPane::no_op
                 }
@@ -1544,9 +1609,9 @@ class EvalPane : public WindowPane
             {
                 KEY_HOME,
                 {
-                    &WindowPane::move,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::line_begin,
+                    &WindowPane::line_begin,
+                    &WindowPane::visual_line_begin,
                     &WindowPane::no_op
                 }
             },
@@ -1554,8 +1619,8 @@ class EvalPane : public WindowPane
                 '^',
                 {
                     &WindowPane::insert,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::line_begin,
+                    &WindowPane::visual_line_begin,
                     &WindowPane::replace
                 }
             },
@@ -1563,8 +1628,8 @@ class EvalPane : public WindowPane
                 '_',
                 {
                     &WindowPane::no_op,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::line_begin,
+                    &WindowPane::visual_line_begin,
                     &WindowPane::no_op
                 }
             },
@@ -1572,8 +1637,8 @@ class EvalPane : public WindowPane
                 '$',
                 {
                     &WindowPane::no_op,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::line_end,
+                    &WindowPane::visual_line_end,
                     &WindowPane::no_op
                 }
             },
@@ -1581,8 +1646,8 @@ class EvalPane : public WindowPane
                 'g',
                 {
                     &WindowPane::no_op,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::pane_begin,
+                    &WindowPane::visual_pane_begin,
                     &WindowPane::no_op
                 }
             },
@@ -1590,17 +1655,17 @@ class EvalPane : public WindowPane
                 'G',
                 {
                     &WindowPane::no_op,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::pane_end,
+                    &WindowPane::visual_pane_end,
                     &WindowPane::no_op
                 }
             },
             {
                 KEY_LEFT,
                 {
-                    &WindowPane::move,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::left,
+                    &WindowPane::left,
+                    &WindowPane::visual_left,
                     &WindowPane::replace_move
                 }
             },
@@ -1608,17 +1673,17 @@ class EvalPane : public WindowPane
                 'h',
                 {
                     &WindowPane::no_op,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::left,
+                    &WindowPane::visual_left,
                     &WindowPane::no_op
                 }
             },
             {
                 KEY_RIGHT,
                 {
-                    &WindowPane::move,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::right,
+                    &WindowPane::right,
+                    &WindowPane::visual_right,
                     &WindowPane::replace_move
                 }
             },
@@ -1626,16 +1691,16 @@ class EvalPane : public WindowPane
                 'l',
                 {
                     &WindowPane::no_op,
-                    &WindowPane::move,
-                    &WindowPane::visual_move,
+                    &WindowPane::right,
+                    &WindowPane::visual_right,
                     &WindowPane::no_op
                 }
             },
             {
                 KEY_UP,
                 {
-                    &WindowPane::move,
-                    &WindowPane::move,
+                    &WindowPane::history_prev,
+                    &WindowPane::history_prev,
                     &WindowPane::no_op,
                     &WindowPane::no_op
                 }
@@ -1644,7 +1709,7 @@ class EvalPane : public WindowPane
                 'k',
                 {
                     &WindowPane::no_op,
-                    &WindowPane::no_op,
+                    &WindowPane::up,
                     &WindowPane::no_op,
                     &WindowPane::no_op
                 }
@@ -1661,8 +1726,8 @@ class EvalPane : public WindowPane
             {
                 KEY_DOWN,
                 {
-                    &WindowPane::move,
-                    &WindowPane::move,
+                    &WindowPane::history_next,
+                    &WindowPane::history_next,
                     &WindowPane::no_op,
                     &WindowPane::no_op
                 }
@@ -1726,7 +1791,7 @@ class EvalPane : public WindowPane
                 {
                     &WindowPane::no_op,
                     &WindowPane::no_op,
-                    &WindowPane::visual_toggle_position,
+                    &WindowPane::visual_toggle,
                     &WindowPane::no_op
                 }
             },
@@ -1735,12 +1800,12 @@ class EvalPane : public WindowPane
                 {
                     &WindowPane::no_op,
                     &WindowPane::no_op,
-                    &WindowPane::visual_toggle_position,
+                    &WindowPane::visual_toggle,
                     &WindowPane::no_op
                 }
             },
             {
-                's',  // Deletes char at cursor, like KEY_DC then to insert mode
+                's',
                 {
                     &WindowPane::no_op,
                     &WindowPane::insert_mode,
@@ -1770,7 +1835,7 @@ class EvalPane : public WindowPane
                 'e',
                 {
                     &WindowPane::insert,
-                    &WindowPane::move,
+                    &WindowPane::history_delete,
                     &WindowPane::no_op,
                     &WindowPane::replace,
                 }
