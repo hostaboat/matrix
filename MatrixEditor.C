@@ -1485,6 +1485,120 @@ ColorPair& WindowPane::color(void)
 }
 
 //******************************************************************************
+//* TextPane *******************************************************************
+//******************************************************************************
+TextPane::TextPane(MatrixEditor* me, WINDOW* w)
+    : WindowPane(me, w), _entries(0), _cur_entry(0)
+{
+    _entries.push_back(WindowEntry(_win, Cursor(0, 0)));
+}
+
+TextPane::TextPane(const TextPane& rhs)
+    : WindowPane(rhs), _entries(rhs._entries), _cur_entry(rhs._cur_entry)
+{
+}
+
+TextPane& TextPane::operator=(const TextPane& rhs)
+{
+    if (this == &rhs)
+        return *this;
+
+    WindowPane::operator=(rhs);
+
+    _entries = rhs._entries;
+    _cur_entry = rhs._cur_entry;
+
+    return *this;
+}
+
+WindowPane::KeyAction TextPane::key_action(int ch, EditorMode m)
+{
+    if (_key_mode_actions.find(ch) == _key_mode_actions.end())
+    {
+        if ((m == MODE_INSERT) && is_print(ch))
+            return &WindowPane::insert;
+        else if ((m == MODE_REPLACE) && is_print(ch))
+            return &WindowPane::replace;
+    }
+    else
+    {
+        switch (m)
+        {
+            case MODE_INSERT:
+                return _key_mode_actions[ch].insert_mode_action;
+            case MODE_EDIT:
+                return _key_mode_actions[ch].edit_mode_action;
+            case MODE_VISUAL:
+                return _key_mode_actions[ch].visual_mode_action;
+            case MODE_REPLACE:
+                return _key_mode_actions[ch].replace_mode_action;
+        }
+    }
+
+    return &WindowPane::no_op;
+}
+
+WindowEntry& TextPane::entry(size_t row, size_t col)
+{
+    if (row > _entries.size())
+        row = _entries.size();
+
+    return _entries[row-1];
+}
+
+WindowEntry& TextPane::entry(void)
+{
+    return _entries[_cur_entry];
+}
+
+void TextPane::draw(void)
+{
+}
+
+void TextPane::up(int ch)
+{
+    if (_cur_entry == 0)
+        return;
+
+    _entries[--_cur_entry].set();
+}
+
+void TextPane::down(int ch)
+{
+    if ((_cur_entry + 1) >= _entries.size())
+        return;
+
+    _entries[++_cur_entry].set();
+}
+
+void TextPane::pane_begin(int ch)
+{
+    _cur_entry = 0;
+    _entries[_cur_entry].mbegin();
+}
+
+void TextPane::pane_end(int ch)
+{
+    _cur_entry = _entries.size() - 1;
+    _entries[_cur_entry].mend();
+}
+
+void TextPane::special(int ch)
+{
+    switch (ch)
+    {
+        case K_NEWLINE:
+        case KEY_ENTER:
+            _cur_entry++;
+            _entries.insert(_entries.begin() + _cur_entry, WindowEntry(_win, Cursor(_cur_entry, 0)));
+            break;
+
+        default:
+            break;
+    }
+}
+
+//******************************************************************************
 //* MatrixPane *****************************************************************
 //******************************************************************************
 MatrixPane::MatrixPane(size_t n, MatrixEditor* me, WINDOW* w)

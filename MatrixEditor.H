@@ -418,7 +418,7 @@ class WindowPane
         WindowPane(MatrixEditor* me, WINDOW* w);
         WindowPane(const WindowPane& rhs);
         WindowPane& operator=(const WindowPane& rhs);
-        ~WindowPane(void) {};
+        ~WindowPane(void) {}
 
         typedef void (WindowPane::*KeyAction)(int ch);
 #define MEW_CALL(object, member_func)   ((object).*(member_func))
@@ -880,13 +880,461 @@ class WindowPane
         };
 };
 
+class TextPane : public WindowPane
+{
+    public:
+        TextPane(MatrixEditor* me, WINDOW* w);
+        TextPane(const TextPane& rhs);
+        TextPane& operator=(const TextPane& rhs);
+        ~TextPane(void) {}
+
+        virtual KeyAction key_action(int ch, EditorMode m);
+
+        //virtual bool is_print(int ch);
+        //virtual void we_addstr(string s);
+
+        virtual WindowEntry& entry(size_t row, size_t col = 1);
+        virtual WindowEntry& entry(void);
+
+        //virtual void set(void);
+        virtual void draw(void);
+        //virtual void clear(void);
+        //virtual void redraw(void);
+        //virtual void refresh(void);
+
+        //virtual void insert_mode(int ch);
+        //virtual void edit_mode(int ch);
+        //virtual void visual_mode(int ch);
+        //virtual void replace_mode(int ch);
+        //virtual void command_mode(int ch);
+
+        //virtual void cancel(int ch);
+
+        //virtual void insert(int ch);
+        //virtual void remove(int ch);
+        //virtual void remove_left(int ch);
+        //virtual void clear_line(int ch);
+        //virtual void clear_to_eol(int ch);
+        //virtual void yank(int ch);
+        //virtual void paste(int ch);
+
+        //virtual void move(int ch);
+        //virtual void left(int ch);
+        //virtual void right(int ch);
+        virtual void up(int ch);
+        virtual void down(int ch);
+        //virtual void prev(int ch);
+        //virtual void next(int ch);
+        //virtual void line_begin(int ch);
+        //virtual void line_end(int ch);
+        virtual void pane_begin(int ch);
+        virtual void pane_end(int ch);
+
+        //virtual void history_prev(int ch);
+        //virtual void history_next(int ch);
+        //virtual void history_delete(int ch);
+
+        //virtual void visual_cancel(int ch);
+        //virtual void visual_move(int ch);
+        //virtual void visual_left(int ch);
+        //virtual void visual_right(int ch);
+        //virtual void visual_up(int ch);
+        //virtual void visual_down(int ch);
+        //virtual void visual_line_begin(int ch);
+        //virtual void visual_line_end(int ch);
+        //virtual void visual_pane_begin(int ch);
+        //virtual void visual_pane_end(int ch);
+
+        //virtual void visual_remove(int ch);
+        //virtual void visual_replace(int ch);
+        //virtual void visual_clear(int ch);
+        //virtual void visual_yank(int ch);
+        //virtual void visual_paste(int ch);
+        //virtual void visual_toggle(int ch);
+
+        //virtual void replace_cancel(int ch);
+        //virtual void replace(int ch);
+        //virtual void replace_move(int ch);
+        //virtual void replace_one(int ch);
+
+        virtual void special(int ch);
+        //virtual void no_op(int ch) {}
+
+    private:
+        vector<WindowEntry> _entries;
+        size_t _cur_entry;
+
+        map<int, KeyModeAction> _key_mode_actions = {
+            {
+                K_ESCAPE,
+                { 
+                    &WindowPane::edit_mode,
+                    &WindowPane::cancel,
+                    &WindowPane::visual_cancel,
+                    &WindowPane::replace_cancel
+                }
+            },
+            {
+                KEY_BACKSPACE,
+                {
+                    &WindowPane::remove_left,
+                    &WindowPane::left,
+                    &WindowPane::visual_left,
+                    &WindowPane::move
+                }
+            },
+            {
+                K_BACKSPACE1,
+                {
+                    &WindowPane::remove_left,
+                    &WindowPane::left,
+                    &WindowPane::visual_left,
+                    &WindowPane::move
+                }
+            },
+            {
+                K_BACKSPACE2,
+                {
+                    &WindowPane::remove_left,
+                    &WindowPane::left,
+                    &WindowPane::visual_left,
+                    &WindowPane::move
+                }
+            },
+            {
+                KEY_DC,
+                {
+                    &WindowPane::remove,
+                    &WindowPane::remove,
+                    &WindowPane::visual_remove,
+                    &WindowPane::no_op
+                }
+            },
+            {
+                'x',
+                {
+                    &WindowPane::insert,
+                    &WindowPane::remove,
+                    &WindowPane::visual_remove,
+                    &WindowPane::replace
+                }
+            },
+            {
+                'd',
+                {
+                    &WindowPane::insert,
+                    &WindowPane::clear_line,
+                    &WindowPane::visual_remove,
+                    &WindowPane::replace
+                }
+            },
+            {
+                'D',
+                {
+                    &WindowPane::insert,
+                    &WindowPane::clear_to_eol,
+                    &WindowPane::visual_clear,
+                    &WindowPane::replace
+                }
+            },
+            {
+                'p',
+                {
+                    &WindowPane::insert,
+                    &WindowPane::paste,
+                    &WindowPane::visual_paste,
+                    &WindowPane::replace
+                }
+            },
+            {
+                'P',
+                {
+                    &WindowPane::insert,
+                    &WindowPane::paste,
+                    &WindowPane::visual_paste,
+                    &WindowPane::replace
+                }
+            },
+            {
+                'r',
+                {
+                    &WindowPane::insert,
+                    &WindowPane::replace_one,
+                    &WindowPane::visual_replace,
+                    &WindowPane::replace
+                }
+            },
+            {
+                'R',
+                {
+                    &WindowPane::insert,
+                    &WindowPane::replace_mode,
+                    &WindowPane::visual_replace,
+                    &WindowPane::replace
+                }
+            },
+            {
+                K_NEWLINE,
+                {
+                    &WindowPane::special,
+                    &WindowPane::down,
+                    &WindowPane::visual_down,
+                    &WindowPane::replace
+                }
+            },
+            {
+                KEY_ENTER,
+                {
+                    &WindowPane::special,
+                    &WindowPane::down,
+                    &WindowPane::visual_down,
+                    &WindowPane::replace
+                }
+            },
+            {
+                KEY_HOME,
+                {
+                    &WindowPane::line_begin,
+                    &WindowPane::line_begin,
+                    &WindowPane::visual_line_begin,
+                    &WindowPane::replace,
+                }
+            },
+            {
+                '^',
+                {
+                    &WindowPane::insert,
+                    &WindowPane::line_begin,
+                    &WindowPane::visual_line_begin,
+                    &WindowPane::replace
+                }
+            },
+            {
+                '_',
+                {
+                    &WindowPane::insert,
+                    &WindowPane::line_begin,
+                    &WindowPane::visual_line_begin,
+                    &WindowPane::replace
+                }
+            },
+            {
+                '$',
+                {
+                    &WindowPane::insert,
+                    &WindowPane::line_end,
+                    &WindowPane::visual_line_end,
+                    &WindowPane::replace
+                }
+            },
+            {
+                'g',
+                {
+                    &WindowPane::insert,
+                    &WindowPane::pane_begin,
+                    &WindowPane::visual_pane_begin,
+                    &WindowPane::replace
+                }
+            },
+            {
+                'G',
+                {
+                    &WindowPane::insert,
+                    &WindowPane::pane_end,
+                    &WindowPane::visual_pane_end,
+                    &WindowPane::replace
+                }
+            },
+            {
+                KEY_LEFT,
+                {
+                    &WindowPane::left,
+                    &WindowPane::left,
+                    &WindowPane::visual_left,
+                    &WindowPane::move
+                }
+            },
+            {
+                'h',
+                {
+                    &WindowPane::insert,
+                    &WindowPane::left,
+                    &WindowPane::visual_left,
+                    &WindowPane::replace
+                }
+            },
+            {
+                KEY_RIGHT,
+                {
+                    &WindowPane::right,
+                    &WindowPane::right,
+                    &WindowPane::visual_right,
+                    &WindowPane::move
+                }
+            },
+            {
+                'l',
+                {
+                    &WindowPane::insert,
+                    &WindowPane::right,
+                    &WindowPane::visual_right,
+                    &WindowPane::replace
+                }
+            },
+            {
+                KEY_UP,
+                {
+                    &WindowPane::up,
+                    &WindowPane::up,
+                    &WindowPane::visual_up,
+                    &WindowPane::move
+                }
+            },
+            {
+                'k',
+                {
+                    &WindowPane::insert,
+                    &WindowPane::up,
+                    &WindowPane::visual_up,
+                    &WindowPane::replace
+                }
+            },
+            {
+                '-',
+                {
+                    &WindowPane::insert,
+                    &WindowPane::up,
+                    &WindowPane::visual_up,
+                    &WindowPane::replace
+                }
+            },
+            {
+                KEY_DOWN,
+                {
+                    &WindowPane::down,
+                    &WindowPane::down,
+                    &WindowPane::visual_down,
+                    &WindowPane::move
+                }
+            },
+            {
+                'j',
+                {
+                    &WindowPane::insert,
+                    &WindowPane::down,
+                    &WindowPane::visual_down,
+                    &WindowPane::replace
+                }
+            },
+            {
+                '+',
+                {
+                    &WindowPane::insert,
+                    &WindowPane::down,
+                    &WindowPane::visual_down,
+                    &WindowPane::replace
+                }
+            },
+            {
+                K_TAB,
+                {
+                    &WindowPane::insert,
+                    &WindowPane::no_op,
+                    &WindowPane::no_op,
+                    &WindowPane::replace
+                }
+            },
+            {
+                KEY_BTAB,
+                {
+                    &WindowPane::insert,
+                    &WindowPane::no_op,
+                    &WindowPane::no_op,
+                    &WindowPane::replace
+                }
+            },
+            {
+                'i',
+                {
+                    &WindowPane::insert,
+                    &WindowPane::insert_mode,
+                    &WindowPane::no_op,
+                    &WindowPane::replace
+                }
+            },
+            {
+                'a',
+                {
+                    &WindowPane::insert,
+                    &WindowPane::insert_mode,
+                    &WindowPane::no_op,
+                    &WindowPane::replace
+                }
+            },
+            {
+                'o',
+                {
+                    &WindowPane::insert,
+                    &WindowPane::insert_mode,
+                    &WindowPane::visual_toggle,
+                    &WindowPane::replace
+                }
+            },
+            {
+                'O',
+                {
+                    &WindowPane::insert,
+                    &WindowPane::insert_mode,
+                    &WindowPane::visual_toggle,
+                    &WindowPane::replace
+                }
+            },
+            {
+                's',
+                {
+                    &WindowPane::insert,
+                    &WindowPane::insert_mode,
+                    &WindowPane::visual_remove,
+                    &WindowPane::replace
+                }
+            },
+            {
+                'v',
+                {
+                    &WindowPane::insert,
+                    &WindowPane::visual_mode,
+                    &WindowPane::visual_cancel,
+                    &WindowPane::replace
+                }
+            },
+            {
+                'y',
+                {
+                    &WindowPane::insert,
+                    &WindowPane::yank,
+                    &WindowPane::visual_yank,
+                    &WindowPane::replace
+                }
+            },
+            {
+                ':',
+                {
+                    &WindowPane::insert,
+                    &WindowPane::command_mode,
+                    &WindowPane::no_op,
+                    &WindowPane::replace
+                }
+            },
+        };
+};
+
 class MatrixPane : public WindowPane
 {
     public:
         MatrixPane(size_t n, MatrixEditor* me, WINDOW* w);
         MatrixPane(const MatrixPane& rhs);
         MatrixPane& operator=(const MatrixPane& rhs);
-        ~MatrixPane(void);
+        virtual ~MatrixPane(void);
 
         virtual KeyAction key_action(int ch, EditorMode m);
 
@@ -1392,7 +1840,7 @@ class EvalPane : public WindowPane
         EvalPane(MatrixEditor* me, WINDOW* w);
         EvalPane(const EvalPane& rhs);
         EvalPane& operator=(const EvalPane& rhs);
-        ~EvalPane(void) {}
+        virtual ~EvalPane(void) {}
 
         virtual KeyAction key_action(int ch, EditorMode m);
 
