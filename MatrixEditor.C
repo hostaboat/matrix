@@ -1716,10 +1716,7 @@ void TextPane::insert_line(int ch)
 
     c.col(0);
 
-    if (!data.empty())
-        _lines.insert(_lines.begin() + _cur_line, WindowEntry(_win, c, data));
-    else
-        _lines.insert(_lines.begin() + _cur_line, WindowEntry(_win, c));
+    _lines.insert(_lines.begin() + _cur_line, WindowEntry(_win, c, data));
 
     // If cursor of newly inserted line greater than end decrease all cursors previous
     if (entry().cursor().row() == _win_end.row())
