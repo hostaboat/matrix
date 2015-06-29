@@ -1117,11 +1117,6 @@ void WindowPane::cancel(int ch)
     _me->set_mode(MODE_EDIT);
 }
 
-void WindowPane::command_mode(int ch)
-{
-    _me->command(ch);
-}
-
 void WindowPane::visual_mode(int ch)
 {
     _me->set_mode(MODE_VISUAL);
@@ -1565,6 +1560,13 @@ void WindowPane::replace_one(int ch)
     }
 }
 
+void WindowPane::update_color(short fg, short bg)
+{
+    _color_pair.pair(fg, bg);
+    wbkgd(_win, COLOR_PAIR(_color_pair.pair_number()));
+    redraw();
+}
+
 WINDOW* WindowPane::window(void)
 {
     return _win;
@@ -1673,6 +1675,10 @@ WindowEntry& TextPane::entry(void)
 
 void TextPane::draw(void)
 {
+    int bg = _color_pair.bg();
+    if (bg != _tilde_fill.bg())
+        _tilde_fill.bg(bg);
+
     for (size_t i = 0; i < _lines.size(); i++)
     {
         WindowEntry& e(_lines[i]);
@@ -2658,6 +2664,20 @@ void MatrixPane::special(int ch)
     {
         solve();
     }
+}
+
+void MatrixPane::update_color(short fg, short bg)
+{
+    _color_pair.pair(fg, bg);
+
+    auto mit = _text_panes.find(MTP_MATRIX_DATA);
+    mit->second.color().pair(fg, bg);
+
+    auto tit = _text_panes.find(MTP_TEXT);
+    tit->second.color().pair(fg, bg);
+
+    wbkgd(_win, COLOR_PAIR(_color_pair.pair_number()));
+    redraw();
 }
 
 void MatrixPane::solve(void)
@@ -3662,7 +3682,10 @@ void MatrixEditor::loop(void)
         if (ch == KEY_RESIZE)
             continue;
 
-        _current_editor_window->key_action(ch, _mode);
+        if ((_mode == MODE_EDIT) && (ch == _cmd_char))
+            process_command(_cmd_char);
+        else
+            _current_editor_window->key_action(ch, _mode);
 
         if (_exit_loop)
             break;
@@ -3745,17 +3768,6 @@ void MatrixEditor::error(string e)
     curs_set(old_curs);
 }
 
-void MatrixEditor::command(int ch)
-{
-    if (!_initialized)
-        return;
-
-    process_command(ch);
-
-    wclear(_command_window);
-    wrefresh(_command_window);
-}
-
 void trim_whitespace(string& s)
 {
     auto it = s.begin();
@@ -3773,6 +3785,9 @@ void MatrixEditor::process_command(int ch)
     static char buffer[256];
     static size_t command_index = 0;
 
+    if (!_initialized)
+        return;
+
     WINDOW* w = _command_window;
 
     waddch(w, ch);
@@ -3780,6 +3795,7 @@ void MatrixEditor::process_command(int ch)
     int y, x;
     int line_start = 1;
     int line_end = 1;
+    bool exit_loop = false;
 
     getyx(w, y, x);
 
@@ -3805,7 +3821,9 @@ void MatrixEditor::process_command(int ch)
                         command_index = 0;
                     }
                 }
-                return;
+
+                exit_loop = true;
+                break;
 
             case KEY_ENTER:
             case K_NEWLINE:
@@ -3829,7 +3847,9 @@ void MatrixEditor::process_command(int ch)
                     trim_whitespace(s);
                     execute_command(s);
                 }
-                return;
+
+                exit_loop = true;
+                break;
 
             case KEY_BACKSPACE:
             case K_BACKSPACE1:
@@ -3901,10 +3921,16 @@ void MatrixEditor::process_command(int ch)
                 break;
         }
 
+        if (exit_loop)
+            break;
+
         getyx(w, y, x);
         if (x == 0)
             break;
     }
+
+    wclear(_command_window);
+    wrefresh(_command_window);
 }
 
 void MatrixEditor::execute_command(const string& s)
@@ -3992,13 +4018,11 @@ void MatrixEditor::quit(const vector<string>& args)
 void MatrixEditor::color(const vector<string>& args)
 {
     WINDOW* w = _command_window;
-    WINDOW* ew = _current_editor_window->window();
-    ColorPair& cp = _current_editor_window->color();
     int ch;
-    short pair_number, fg, bg;
+    short fg, bg;
     int old_curs = curs_set(0);
 
-    pair_number = cp.pair(&fg, &bg);
+    (void)_current_editor_window->color().pair(&fg, &bg);
 
     wprintw(w, "Use left/right arrows to change foreground and up/down to change background ");
 
@@ -4042,15 +4066,11 @@ void MatrixEditor::color(const vector<string>& args)
                 bg++;
         }
 
-        init_pair(pair_number, fg, bg);
-        wbkgd(ew, COLOR_PAIR(pair_number));
-        wrefresh(ew);
+        _current_editor_window->update_color(fg, bg);
 
         wclear(w);
         mvwprintw(w, 0, 0, "Foreground: %d, Background: %d", fg, bg);
     }
-
-    cp.pair(fg, bg);
 
     wclear(w);
     wrefresh(w);

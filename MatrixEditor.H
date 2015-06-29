@@ -452,7 +452,6 @@ class WindowPane
         virtual void edit_mode(int ch);
         virtual void visual_mode(int ch);
         virtual void replace_mode(int ch);
-        virtual void command_mode(int ch);
 
         virtual void cancel(int ch);
 
@@ -510,6 +509,8 @@ class WindowPane
 
         WINDOW* window(void);
         ColorPair& color(void);
+
+        virtual void update_color(short fg, short bg);
 
     protected:
         MatrixEditor* _me;
@@ -904,15 +905,6 @@ class WindowPane
                     &WindowPane::no_op
                 }
             },
-            {
-                ':',
-                {
-                    &WindowPane::insert,
-                    &WindowPane::command_mode,
-                    &WindowPane::no_op,
-                    &WindowPane::replace
-                }
-            },
         };
 };
 
@@ -944,7 +936,6 @@ class TextPane : public WindowPane
         //virtual void edit_mode(int ch);
         //virtual void visual_mode(int ch);
         //virtual void replace_mode(int ch);
-        //virtual void command_mode(int ch);
 
         //virtual void cancel(int ch);
 
@@ -999,6 +990,8 @@ class TextPane : public WindowPane
 
         virtual void special(int ch) {}
         //virtual void no_op(int ch) {}
+
+        //virtual void update_color(short fg, short bg);
 
     private:
         vector<WindowEntry> _lines;
@@ -1384,15 +1377,6 @@ class TextPane : public WindowPane
                     &WindowPane::no_op
                 }
             },
-            {
-                ':',
-                {
-                    &WindowPane::insert,
-                    &WindowPane::command_mode,
-                    &WindowPane::no_op,
-                    &WindowPane::replace
-                }
-            },
         };
 };
 
@@ -1426,7 +1410,6 @@ class MatrixPane : public WindowPane
         //virtual void edit_mode(int ch);
         //virtual void visual_mode(int ch);
         //virtual void replace_mode(int ch);
-        //virtual void command_mode(int ch);
 
         //virtual void cancel(int ch);
 
@@ -1483,6 +1466,9 @@ class MatrixPane : public WindowPane
 
         //virtual void no_op(int ch) {}
         virtual void special(int ch);
+
+        virtual void update_color(short fg, short bg);
+
         void solve(void);
 
         enum MatrixPart
@@ -1933,15 +1919,6 @@ class MatrixPane : public WindowPane
                     &WindowPane::no_op
                 }
             },
-            {
-                ':',
-                {
-                    &WindowPane::no_op,
-                    &WindowPane::command_mode,
-                    &WindowPane::no_op,
-                    &WindowPane::no_op
-                }
-            },
         };
 };
 
@@ -1973,7 +1950,6 @@ class EvalPane : public WindowPane
         //virtual void edit_mode(int ch);
         //virtual void visual_mode(int ch);
         //virtual void replace_mode(int ch);
-        //virtual void command_mode(int ch);
 
         //virtual void cancel(int ch);
 
@@ -2028,6 +2004,8 @@ class EvalPane : public WindowPane
 
         //virtual void no_op(int ch) {}
         virtual void special(int ch);
+
+        //virtual void update_color(short fg, short bg);
 
         void solve(void);
 
@@ -2430,15 +2408,6 @@ class EvalPane : public WindowPane
                     &WindowPane::no_op
                 }
             },
-            {
-                ':',
-                {
-                    &WindowPane::no_op,
-                    &WindowPane::command_mode,
-                    &WindowPane::no_op,
-                    &WindowPane::no_op
-                }
-            },
         };
 };
 
@@ -2454,7 +2423,6 @@ class MatrixEditor
         void error(string e);
         void set_mode(EditorMode mode);
         EditorMode mode(void);
-        void command(int ch);
 
         void yanked(const string& s);
         const string& yanked(void);
@@ -2526,6 +2494,8 @@ class MatrixEditor
         const int cwh = 1;
         const int mpw_minh = 20;
         const int mpw_minw = 80;
+
+        const int _cmd_char = ':';
 
         typedef void (MatrixEditor::*CommandAction)(const vector<string>& args);
 #define MEC_CALL(object, member_func)   ((object).*(member_func))
