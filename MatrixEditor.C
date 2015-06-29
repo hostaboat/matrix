@@ -1604,13 +1604,9 @@ WindowEntry& TextPane::operator[](size_t row)
     if (row >= _lines.size())
     {
         size_t new_rows = row - (_lines.size() - 1);
-        Cursor c(_lines[_lines.size() - 1].cursor());
+
         for (size_t i = 0; i < new_rows; i++)
-        {
-            c + 1;
-            Cursor nc(c);
-            _lines.push_back(WindowEntry(_win, nc));
-        }
+            insert_line('o');
     }
 
     _cur_line = row;
@@ -2631,30 +2627,18 @@ void MatrixPane::special(int ch)
                 break;
 
             case KEY_DOWN:
-                {
-                    _mpp = MPP_TEXT;
-                    //_text_panes[_mtp].set();
-                    auto it = _text_panes.find(_mtp);
-                    it->second.set();
-                }
+                _mpp = MPP_TEXT;
+                draw();
                 break;
 
             case KEY_LEFT:
-                {
-                    _mtp = MTP_MATRIX_DATA;
-                    //_text_panes[_mtp].redraw();
-                    auto it = _text_panes.find(_mtp);
-                    it->second.redraw();
-                }
+                _mtp = MTP_MATRIX_DATA;
+                draw();
                 break;
 
             case KEY_RIGHT:
-                {
-                    _mtp = MTP_TEXT;
-                    //_text_panes[_mtp].redraw();
-                    auto it = _text_panes.find(_mtp);
-                    it->second.redraw();
-                }
+                _mtp = MTP_TEXT;
+                draw();
                 break;
         }
     }
@@ -2992,6 +2976,8 @@ void MatrixPane::solve(void)
         mdata[curs_row++] = "";
     }
 
+    mdata.pane_begin('g');
+    mdata.pane_begin('g');
     mdata.draw();
     set();
     curs_set(old_curs);
