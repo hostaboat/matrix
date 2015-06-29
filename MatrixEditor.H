@@ -1003,6 +1003,7 @@ class TextPane : public WindowPane
     private:
         vector<WindowEntry> _lines;
         size_t _cur_line;
+        ColorPair _tilde_fill;
 
         map<int, KeyModeAction> _key_mode_actions = {
             {
