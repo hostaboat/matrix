@@ -1843,6 +1843,7 @@ void TextPane::remove_line(int ch)
 
     WindowEntry& e(entry());
     string s(e.data());
+    int cur_row = e.cursor().row();
 
     WindowEntry& last(entry(_lines.size() - 1));
 
@@ -1854,13 +1855,21 @@ void TextPane::remove_line(int ch)
 
     _lines.erase(_lines.begin() + _cur_line);
 
-    for (size_t i = _cur_line; i < _lines.size(); i++)
-        _lines[i].cursor() - 1;
-
-    draw();
+    if ((cur_row == _win_start.row()) && (_cur_line == _lines.size()))
+    {
+        for (size_t i = 0; i < _cur_line; i++)
+            _lines[i].cursor() + 1;
+    }
+    else
+    {
+        for (size_t i = _cur_line; i < _lines.size(); i++)
+            _lines[i].cursor() - 1;
+    }
 
     if (_cur_line == _lines.size())
         _cur_line--;
+
+    draw();
 
     entry().mbegin();
 
