@@ -541,7 +541,7 @@ class WindowPane
                     &WindowPane::remove_left,
                     &WindowPane::left,
                     &WindowPane::visual_left,
-                    &WindowPane::move
+                    &WindowPane::replace_move
                 }
             },
             {
@@ -550,7 +550,7 @@ class WindowPane
                     &WindowPane::remove_left,
                     &WindowPane::left,
                     &WindowPane::visual_left,
-                    &WindowPane::move
+                    &WindowPane::replace_move
                 }
             },
             {
@@ -559,7 +559,7 @@ class WindowPane
                     &WindowPane::remove_left,
                     &WindowPane::left,
                     &WindowPane::visual_left,
-                    &WindowPane::move
+                    &WindowPane::replace_move
                 }
             },
             {
@@ -721,7 +721,7 @@ class WindowPane
                     &WindowPane::left,
                     &WindowPane::left,
                     &WindowPane::visual_left,
-                    &WindowPane::move
+                    &WindowPane::replace_move
                 }
             },
             {
@@ -739,7 +739,7 @@ class WindowPane
                     &WindowPane::right,
                     &WindowPane::right,
                     &WindowPane::visual_right,
-                    &WindowPane::move
+                    &WindowPane::replace_move
                 }
             },
             {
@@ -1021,7 +1021,7 @@ class TextPane : public WindowPane
                     &WindowPane::remove_left,
                     &WindowPane::left,
                     &WindowPane::visual_left,
-                    &WindowPane::move
+                    &WindowPane::replace_move
                 }
             },
             {
@@ -1030,7 +1030,7 @@ class TextPane : public WindowPane
                     &WindowPane::remove_left,
                     &WindowPane::left,
                     &WindowPane::visual_left,
-                    &WindowPane::move
+                    &WindowPane::replace_move
                 }
             },
             {
@@ -1039,7 +1039,7 @@ class TextPane : public WindowPane
                     &WindowPane::remove_left,
                     &WindowPane::left,
                     &WindowPane::visual_left,
-                    &WindowPane::move
+                    &WindowPane::replace_move
                 }
             },
             {
@@ -1201,7 +1201,7 @@ class TextPane : public WindowPane
                     &WindowPane::left,
                     &WindowPane::left,
                     &WindowPane::visual_left,
-                    &WindowPane::move
+                    &WindowPane::replace_move
                 }
             },
             {
@@ -1219,7 +1219,7 @@ class TextPane : public WindowPane
                     &WindowPane::right,
                     &WindowPane::right,
                     &WindowPane::visual_right,
-                    &WindowPane::move
+                    &WindowPane::replace_move
                 }
             },
             {

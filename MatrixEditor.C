@@ -1501,8 +1501,17 @@ void WindowPane::replace(int ch)
 {
     WindowEntry& e(entry());
 
-    _replaced.push_back(e[e.position()]);
-    e.replace(ch);
+    if (e.position() == (int)e.size())
+    {
+        _replaced.push_back(0);
+        e.insert(ch);
+    }
+    else
+    {
+        _replaced.push_back(e[e.position()]);
+        e.replace(ch);
+    }
+
     e >> 1;
 }
 
@@ -1518,7 +1527,10 @@ void WindowPane::replace_move(int ch)
             left(ch);
             if (!_replaced.empty())
             {
-                e.replace(_replaced.back());
+                if (_replaced.back() == 0)
+                    e.remove();
+                else
+                    e.replace(_replaced.back());
                 _replaced.pop_back();
             }
             break;
