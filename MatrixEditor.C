@@ -960,7 +960,7 @@ string MatrixEntry::info(void)
 //******************************************************************************
 WindowPane::WindowPane(MatrixEditor* me, WINDOW* w)
     : _me(me), _win(w), _color_pair(ColorPair(COLOR_BLACK, COLOR_WHITE)),
-      _clear_toggle(1), _yank_toggle(1), _history(0), _cur_hist_entry(0), _cur_col(0)
+      _clear_toggle(1), _yank_toggle(1), _begin_toggle(1), _history(0), _cur_hist_entry(0), _cur_col(0)
 {
     int height, width;
 
@@ -975,7 +975,7 @@ WindowPane::WindowPane(MatrixEditor* me, WINDOW* w)
 WindowPane::WindowPane(MatrixEditor* me, WINDOW* w, const Cursor& start, const Cursor& end)
     : _me(me), _win(w), _win_start(start), _win_end(end),
       _color_pair(ColorPair(COLOR_BLACK, COLOR_WHITE)),
-      _clear_toggle(1), _yank_toggle(1), _history(0), _cur_hist_entry(0), _cur_col(0)
+      _clear_toggle(1), _yank_toggle(1), _begin_toggle(1), _history(0), _cur_hist_entry(0), _cur_col(0)
 {
     wbkgd(_win, COLOR_PAIR(_color_pair.pair_number()));
 }
@@ -983,8 +983,8 @@ WindowPane::WindowPane(MatrixEditor* me, WINDOW* w, const Cursor& start, const C
 WindowPane::WindowPane(const WindowPane& rhs)
     : _me(rhs._me), _win(rhs._win), _win_start(rhs._win_start), _win_end(rhs._win_end),
       _color_pair(rhs._color_pair), _clear_toggle(rhs._clear_toggle), _yank_toggle(rhs._yank_toggle),
-      _replaced(rhs._replaced), _history(rhs._history), _cur_hist_entry(rhs._cur_hist_entry),
-      _cur_col(rhs._cur_col)
+      _begin_toggle(rhs._begin_toggle), _replaced(rhs._replaced), _history(rhs._history),
+      _cur_hist_entry(rhs._cur_hist_entry), _cur_col(rhs._cur_col)
 {
     wbkgd(_win, COLOR_PAIR(_color_pair.pair_number()));
 }
@@ -1001,6 +1001,7 @@ WindowPane& WindowPane::operator=(const WindowPane& rhs)
     _color_pair = rhs._color_pair;
     _clear_toggle = rhs._clear_toggle;
     _yank_toggle = rhs._yank_toggle;
+    _begin_toggle = rhs._begin_toggle;
     _replaced = rhs._replaced;
     _history = rhs._history;
     _cur_hist_entry = rhs._cur_hist_entry;
@@ -1111,6 +1112,7 @@ void WindowPane::cancel(int ch)
 {
     _clear_toggle = 1;
     _yank_toggle = 1;
+    _begin_toggle = 1;
 
     _me->set_mode(MODE_EDIT);
 }
@@ -1324,6 +1326,11 @@ void WindowPane::line_end(int ch)
 
 void WindowPane::pane_begin(int ch)
 {
+    _begin_toggle ^= 1;
+
+    if (!_begin_toggle)
+        return;
+
     line_begin(ch);
 }
 
@@ -1932,21 +1939,24 @@ void TextPane::down(int ch)
 
 void TextPane::pane_begin(int ch)
 {
-    size_t win_rows = _win_end.row() - _win_start.row();
-    size_t num_lines = _cur_line > win_rows ? win_rows : 0;
+    _begin_toggle ^= 1;
 
-    _cur_line = 0;
+    if (!_begin_toggle)
+        return;
 
-    if (num_lines)
+    WindowEntry& e(entry(0));
+
+    if (e.cursor().row() < _win_start.row())
     {
-        size_t row_start = _win_start.row();
+        int start_row = _win_start.row();
         for (size_t i = 0; i < _lines.size(); i++)
         {
-            _lines[i].cursor().row(row_start + i);
+            _lines[i].cursor().row(start_row + i);
 
-            if (i < num_lines)
+            if ((_lines[i].cursor().row() >= _win_start.row())
+                    && (_lines[i].cursor().row() < _win_end.row()))
             {
-                wmove(_win, row_start + i, 0);
+                wmove(_win, _lines[i].cursor().row(), 0);
                 wclrtoeol(_win);
 
                 _lines[i].draw();
@@ -1954,27 +1964,25 @@ void TextPane::pane_begin(int ch)
         }
     }
 
+    _cur_line = 0;
     line_begin(ch);
 }
 
 void TextPane::pane_end(int ch)
 {
-    size_t win_rows = _win_end.row() - _win_start.row();
-    size_t num_lines = (_lines.size() - 1) - _cur_line > win_rows ? win_rows : 0;
+    WindowEntry& e(entry(_lines.size() - 1));
 
-    _cur_line = _lines.size() - 1;
-
-    if (num_lines)
+    if (e.cursor().row() >= _win_end.row())
     {
-        size_t row_start = _win_start.row();
-        int r = _win_end.row() - 1;
-        for (int i = _lines.size() - 1; i >= 0; i--, r--)
+        int start_row = _win_end.row() - (int)_lines.size();
+        for (int i = 0; i < (int)_lines.size(); i++)
         {
-            _lines[i].cursor().row(r);
+            _lines[i].cursor().row(start_row + i);
 
-            if (r >= row_start)
+            if ((_lines[i].cursor().row() >= _win_start.row())
+                    && (_lines[i].cursor().row() < _win_end.row()))
             {
-                wmove(_win, r, 0);
+                wmove(_win, _lines[i].cursor().row(), 0);
                 wclrtoeol(_win);
 
                 _lines[i].draw();
@@ -1982,6 +1990,7 @@ void TextPane::pane_end(int ch)
         }
     }
 
+    _cur_line = _lines.size() - 1;
     line_end(ch);
 }
 

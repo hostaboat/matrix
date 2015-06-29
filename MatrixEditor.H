@@ -519,6 +519,7 @@ class WindowPane
         ColorPair _color_pair;
         int _clear_toggle;
         int _yank_toggle;
+        int _begin_toggle;
         string _replaced;
         vector<string> _history;
         size_t _cur_hist_entry;
