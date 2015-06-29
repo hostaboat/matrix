@@ -502,7 +502,7 @@ string WindowEntry::data(void)
 
 string WindowEntry::pdata(void)
 {
-    return string(_data.begin() + _pos, _data.end());
+    return _data.substr(_pos);
 }
 
 string WindowEntry::vdata(void)
@@ -1681,8 +1681,8 @@ void TextPane::draw(void)
 
     if (_lines[_lines.size() - 1].cursor().row() < _win_end.row())
     {
-        size_t start_line = _lines[_lines.size() - 1].cursor().row() + 1;
-        for (size_t i = start_line; i < _win_end.row(); i++)
+        int start_line = _lines[_lines.size() - 1].cursor().row() + 1;
+        for (int i = start_line; i < _win_end.row(); i++)
         {
             wmove(_win, i, 0);
             wclrtoeol(_win);
@@ -1716,26 +1716,27 @@ void TextPane::insert_line(int ch)
 
     c.col(0);
 
-    _lines.insert(_lines.begin() + _cur_line, WindowEntry(_win, c, data));
+    if (!data.empty())
+        _lines.insert(_lines.begin() + _cur_line, WindowEntry(_win, c, data));
+    else
+        _lines.insert(_lines.begin() + _cur_line, WindowEntry(_win, c));
 
     // If cursor of newly inserted line greater than end decrease all cursors previous
-    if (_lines[_cur_line].cursor().row() == _win_end.row())
+    if (entry().cursor().row() == _win_end.row())
     {
         for (size_t i = 0; i <= _cur_line; i++)
             _lines[i].cursor() - 1;
-
-        draw();
     }
     else
     {
         for (size_t i = _cur_line + 1; i < _lines.size(); i++)
             _lines[i].cursor() + 1;
-
-        // XXX Could be optimized to draw only affected lines
-        draw();
     }
 
-    _cur_col = e.cursor().col();
+    // XXX Could be optimized to draw only affected lines
+    draw();
+
+    _cur_col = entry().cursor().col();
 }
 
 void TextPane::remove(int ch)
@@ -1749,7 +1750,7 @@ void TextPane::remove(int ch)
     }
 
     if ((_cur_line < (_lines.size() - 1))
-            && (e.position() == e.size()))
+            && (e.position() == (int)e.size()))
     {
         WindowEntry& next(entry(_cur_line + 1));
         string s(next.data());
@@ -1886,7 +1887,7 @@ void TextPane::up(int ch)
 
     e.mpos(_cur_col);
     if ((_me->mode() != MODE_INSERT)
-            && (e.position() == e.size()))
+            && (e.position() == (int)e.size()))
     {
         e << 1;
     }
@@ -1911,7 +1912,7 @@ void TextPane::down(int ch)
 
     e.mpos(_cur_col);
     if ((_me->mode() != MODE_INSERT)
-            && (e.position() == e.size()))
+            && (e.position() == (int)e.size()))
     {
         e << 1;
     }
