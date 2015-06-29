@@ -73,18 +73,38 @@ int Cursor::col(void)
     return _col;
 }
 
+void Cursor::row(int r)
+{
+    _row = r;
+}
+
+void Cursor::col(int c)
+{
+    _col = c;
+}
+
 WindowEntry::WindowEntry(void)
-    : _pos(0), _vstart(-1), _win(NULL), _win_pos(Cursor(0, 0))
+    : _pos(0), _vstart(-1), _win(NULL), _win_pos(Cursor(0, 0)),
+      _default_attrs(AttrColor())
 {
 }
 
 WindowEntry::WindowEntry(WINDOW* w, const Cursor& c)
-    : _pos(0), _vstart(-1), _win(w), _win_pos(c)
+    : _pos(0), _vstart(-1), _win(w), _win_pos(c),
+      _default_attrs(AttrColor())
 {
 }
 
 WindowEntry::WindowEntry(WINDOW* w, const Cursor& c, string s)
-    : _data(s), _pos(0), _vstart(-1), _win(w), _win_pos(c)
+    : _data(s), _pos(0), _vstart(-1), _win(w), _win_pos(c),
+      _default_attrs(AttrColor())
+{
+}
+
+WindowEntry::WindowEntry(const WindowEntry& rhs)
+    : _data(rhs._data), _pos(rhs._pos), _vstart(rhs._vstart),
+      _win(rhs._win), _win_pos(rhs._win_pos),
+      _default_attrs(rhs._default_attrs)
 {
 }
 
@@ -657,19 +677,6 @@ bool eval_special(int ch)
     return false;
 }
 
-#if 0
-void EvalEntry::draw(void)
-{
-    for (size_t i = 0; i < _data.size(); i++)
-    {
-        if (eval_special(_data[i]))
-            waddch(_win, (chtype)_data[i] | A_BOLD);
-        else
-            waddch(_win, _data[i]);
-    }
-}
-#endif
-
 void EvalEntry::get_attrs(int ch, AttrColor& ac)
 {
 #if 0
@@ -953,15 +960,31 @@ string MatrixEntry::info(void)
 //******************************************************************************
 WindowPane::WindowPane(MatrixEditor* me, WINDOW* w)
     : _me(me), _win(w), _color_pair(ColorPair(COLOR_BLACK, COLOR_WHITE)),
-      _clear_toggle(1), _yank_toggle(1), _history(0), _cur_hist_entry(0)
+      _clear_toggle(1), _yank_toggle(1), _history(0), _cur_hist_entry(0), _cur_col(0)
+{
+    int height, width;
+
+    getmaxyx(_win, height, width);
+
+    _win_start = Cursor(0, 0);
+    _win_end = Cursor(height, width);
+
+    wbkgd(_win, COLOR_PAIR(_color_pair.pair_number()));
+}
+
+WindowPane::WindowPane(MatrixEditor* me, WINDOW* w, const Cursor& start, const Cursor& end)
+    : _me(me), _win(w), _win_start(start), _win_end(end),
+      _color_pair(ColorPair(COLOR_BLACK, COLOR_WHITE)),
+      _clear_toggle(1), _yank_toggle(1), _history(0), _cur_hist_entry(0), _cur_col(0)
 {
     wbkgd(_win, COLOR_PAIR(_color_pair.pair_number()));
 }
 
 WindowPane::WindowPane(const WindowPane& rhs)
-    : _me(rhs._me), _win(rhs._win), _color_pair(rhs._color_pair),
-      _clear_toggle(rhs._clear_toggle), _yank_toggle(rhs._yank_toggle),
-      _replaced(rhs._replaced), _history(rhs._history), _cur_hist_entry(rhs._cur_hist_entry)
+    : _me(rhs._me), _win(rhs._win), _win_start(rhs._win_start), _win_end(rhs._win_end),
+      _color_pair(rhs._color_pair), _clear_toggle(rhs._clear_toggle), _yank_toggle(rhs._yank_toggle),
+      _replaced(rhs._replaced), _history(rhs._history), _cur_hist_entry(rhs._cur_hist_entry),
+      _cur_col(rhs._cur_col)
 {
     wbkgd(_win, COLOR_PAIR(_color_pair.pair_number()));
 }
@@ -973,46 +996,57 @@ WindowPane& WindowPane::operator=(const WindowPane& rhs)
 
     _me = rhs._me;
     _win = rhs._win;
+    _win_start = rhs._win_start;
+    _win_end = rhs._win_end;
     _color_pair = rhs._color_pair;
     _clear_toggle = rhs._clear_toggle;
     _yank_toggle = rhs._yank_toggle;
     _replaced = rhs._replaced;
     _history = rhs._history;
     _cur_hist_entry = rhs._cur_hist_entry;
+    _cur_col = rhs._cur_col;
+
+    wbkgd(_win, COLOR_PAIR(_color_pair.pair_number()));
 
     return *this;
 }
 
-WindowPane::KeyAction WindowPane::key_action(int ch, EditorMode m)
+void WindowPane::key_action(int ch, EditorMode m)
 {
     if (_key_mode_actions.find(ch) == _key_mode_actions.end())
     {
         if ((m == MODE_INSERT) && is_print(ch))
-            return &WindowPane::insert;
+            insert(ch);
         else if ((m == MODE_REPLACE) && is_print(ch))
-            return &WindowPane::replace;
+            replace(ch);
     }
     else
     {
         switch (m)
         {
             case MODE_INSERT:
-                return _key_mode_actions[ch].insert_mode_action;
+                MEW_CALL(*this, _key_mode_actions[ch].insert_mode_action)(ch);
+                break;
             case MODE_EDIT:
-                return _key_mode_actions[ch].edit_mode_action;
+                MEW_CALL(*this, _key_mode_actions[ch].edit_mode_action)(ch);
+                break;
             case MODE_VISUAL:
-                return _key_mode_actions[ch].visual_mode_action;
+                MEW_CALL(*this, _key_mode_actions[ch].visual_mode_action)(ch);
+                break;
             case MODE_REPLACE:
-                return _key_mode_actions[ch].replace_mode_action;
+                MEW_CALL(*this, _key_mode_actions[ch].replace_mode_action)(ch);
+                break;
+            default:
+                no_op(ch);
+                break;
         }
     }
-
-    return &WindowPane::no_op;
 }
 
 bool WindowPane::is_print(int ch)
 {
-    return (isgraph(ch) || isspace(ch));
+    //return (isgraph(ch) || isspace(ch));
+    return isprint(ch);
 }
 
 void WindowPane::we_addstr(string s)
@@ -1057,8 +1091,14 @@ void WindowPane::insert_mode(int ch)
 
     if (ch == 'a')
         right(ch);
+    else if (ch == 'A')
+        line_end(ch);
     else if (ch == 's')
         remove(ch);
+    else if (ch == 'o')
+        insert_line(ch);
+    else if (ch == 'O')
+        insert_line(ch);
 }
 
 void WindowPane::edit_mode(int ch)
@@ -1110,6 +1150,12 @@ void WindowPane::insert(int ch)
 
     e.insert(ch);
     e >> 1;
+
+    _cur_col = e.cursor().col();
+}
+
+void WindowPane::insert_line(int ch)
+{
 }
 
 void WindowPane::remove(int ch)
@@ -1123,6 +1169,8 @@ void WindowPane::remove(int ch)
 
     if (e.position() == (int)e.size())
         e << 1;
+
+    _cur_col = e.cursor().col();
 }
 
 void WindowPane::remove_left(int ch)
@@ -1134,9 +1182,11 @@ void WindowPane::remove_left(int ch)
 
     e << 1;
     e.remove();
+
+    _cur_col = e.cursor().col();
 }
 
-void WindowPane::clear_line(int ch)
+void WindowPane::remove_line(int ch)
 {
     _clear_toggle ^= 1;
 
@@ -1151,6 +1201,8 @@ void WindowPane::clear_line(int ch)
     _me->yanked(e.data());
 
     e.clear();
+
+    _cur_col = e.cursor().col();
 }
 
 void WindowPane::clear_to_eol(int ch)
@@ -1164,6 +1216,13 @@ void WindowPane::clear_to_eol(int ch)
 
     e.pclear();
     e << 1;
+
+    _cur_col = e.cursor().col();
+}
+
+void WindowPane::clear_all(int ch)
+{
+    clear_to_eol(ch);
 }
 
 void WindowPane::yank(int ch)
@@ -1196,6 +1255,8 @@ void WindowPane::paste(int ch)
     if ((_me->mode() != MODE_INSERT)
             && (e.position() == (int)e.size()))
         e << 1;
+
+    _cur_col = e.cursor().col();
 }
 
 void WindowPane::move(int ch)
@@ -1204,7 +1265,11 @@ void WindowPane::move(int ch)
 
 void WindowPane::left(int ch)
 {
-    entry() << 1;
+    WindowEntry& e(entry());
+
+    e << 1;
+
+    _cur_col = e.cursor().col();
 }
 
 void WindowPane::right(int ch)
@@ -1216,6 +1281,8 @@ void WindowPane::right(int ch)
         return;
 
     e >> 1;
+
+    _cur_col = e.cursor().col();
 }
 
 void WindowPane::up(int ch)
@@ -1236,7 +1303,10 @@ void WindowPane::next(int ch)
 
 void WindowPane::line_begin(int ch)
 {
-    entry().mbegin();
+    WindowEntry& e(entry());
+
+    e.mbegin();
+    _cur_col = e.cursor().col();
 }
 
 void WindowPane::line_end(int ch)
@@ -1248,6 +1318,8 @@ void WindowPane::line_end(int ch)
     if ((_me->mode() != MODE_INSERT)
             && (e.position() == (int)e.size()))
         e << 1;
+
+    _cur_col = e.cursor().col();
 }
 
 void WindowPane::pane_begin(int ch)
@@ -1488,13 +1560,19 @@ ColorPair& WindowPane::color(void)
 //* TextPane *******************************************************************
 //******************************************************************************
 TextPane::TextPane(MatrixEditor* me, WINDOW* w)
-    : WindowPane(me, w), _entries(0), _cur_entry(0)
+    : WindowPane(me, w), _lines(0), _cur_line(0)
 {
-    _entries.push_back(WindowEntry(_win, Cursor(0, 0)));
+    _lines.push_back(WindowEntry(_win, _win_start));
+}
+
+TextPane::TextPane(MatrixEditor* me, WINDOW* w, const Cursor& start, const Cursor& end)
+    : WindowPane(me, w, start, end), _lines(0), _cur_line(0)
+{
+    _lines.push_back(WindowEntry(_win, _win_start));
 }
 
 TextPane::TextPane(const TextPane& rhs)
-    : WindowPane(rhs), _entries(rhs._entries), _cur_entry(rhs._cur_entry)
+    : WindowPane(rhs), _lines(rhs._lines), _cur_line(rhs._cur_line)
 {
 }
 
@@ -1505,109 +1583,432 @@ TextPane& TextPane::operator=(const TextPane& rhs)
 
     WindowPane::operator=(rhs);
 
-    _entries = rhs._entries;
-    _cur_entry = rhs._cur_entry;
+    _lines = rhs._lines;
+    _cur_line = rhs._cur_line;
 
     return *this;
 }
 
-WindowPane::KeyAction TextPane::key_action(int ch, EditorMode m)
+WindowEntry& TextPane::operator[](size_t row)
+{
+    if (row >= _lines.size())
+    {
+        size_t new_rows = row - (_lines.size() - 1);
+        Cursor c(_lines[_lines.size() - 1].cursor());
+        for (size_t i = 0; i < new_rows; i++)
+        {
+            c + 1;
+            Cursor nc(c);
+            _lines.push_back(WindowEntry(_win, nc));
+        }
+    }
+
+    _cur_line = row;
+
+    return _lines[row];
+}
+
+void TextPane::key_action(int ch, EditorMode m)
 {
     if (_key_mode_actions.find(ch) == _key_mode_actions.end())
     {
         if ((m == MODE_INSERT) && is_print(ch))
-            return &WindowPane::insert;
+            insert(ch);
         else if ((m == MODE_REPLACE) && is_print(ch))
-            return &WindowPane::replace;
+            replace(ch);
     }
     else
     {
         switch (m)
         {
             case MODE_INSERT:
-                return _key_mode_actions[ch].insert_mode_action;
+                MEW_CALL(*this, _key_mode_actions[ch].insert_mode_action)(ch);
+                break;
             case MODE_EDIT:
-                return _key_mode_actions[ch].edit_mode_action;
+                MEW_CALL(*this, _key_mode_actions[ch].edit_mode_action)(ch);
+                break;
             case MODE_VISUAL:
-                return _key_mode_actions[ch].visual_mode_action;
+                MEW_CALL(*this, _key_mode_actions[ch].visual_mode_action)(ch);
+                break;
             case MODE_REPLACE:
-                return _key_mode_actions[ch].replace_mode_action;
+                MEW_CALL(*this, _key_mode_actions[ch].replace_mode_action)(ch);
+                break;
+            default:
+                no_op(ch);
+                break;
         }
     }
-
-    return &WindowPane::no_op;
 }
 
 WindowEntry& TextPane::entry(size_t row, size_t col)
 {
-    if (row > _entries.size())
-        row = _entries.size();
+    if (row >= _lines.size())
+        row = _lines.size() - 1;
 
-    return _entries[row-1];
+    return _lines[row];
 }
 
 WindowEntry& TextPane::entry(void)
 {
-    return _entries[_cur_entry];
+    return _lines[_cur_line];
 }
 
 void TextPane::draw(void)
 {
+    for (size_t i = 0; i < _lines.size(); i++)
+    {
+        WindowEntry& e(_lines[i]);
+
+        if ((e.cursor().row() >= _win_start.row())
+                && (e.cursor().row() <= _win_end.row()))
+        {
+            wmove(_win, e.cursor().row(), 0);
+            wclrtoeol(_win);
+
+            e.draw();
+        }
+    }
 }
 
-void TextPane::up(int ch)
+void TextPane::insert_line(int ch)
 {
-    if (_cur_entry == 0)
-        return;
+    WindowEntry& e(entry());
+    Cursor c(e.cursor());
+    string data;
 
-    _entries[--_cur_entry].set();
-}
-
-void TextPane::down(int ch)
-{
-    if ((_cur_entry + 1) >= _entries.size())
-        return;
-
-    _entries[++_cur_entry].set();
-}
-
-void TextPane::pane_begin(int ch)
-{
-    _cur_entry = 0;
-    _entries[_cur_entry].mbegin();
-}
-
-void TextPane::pane_end(int ch)
-{
-    _cur_entry = _entries.size() - 1;
-    _entries[_cur_entry].mend();
-}
-
-void TextPane::special(int ch)
-{
     switch (ch)
     {
         case K_NEWLINE:
         case KEY_ENTER:
-            _cur_entry++;
-            _entries.insert(_entries.begin() + _cur_entry, WindowEntry(_win, Cursor(_cur_entry, 0)));
+        default:
+            data = e.pdata();
+            e.pclear();
+            _cur_line++;
             break;
 
-        default:
+        case 'o':
+            _cur_line++;
+            break;
+
+        case 'O':
             break;
     }
+
+    c.col(0);
+
+    _lines.insert(_lines.begin() + _cur_line, WindowEntry(_win, c, data));
+
+    // If cursor of newly inserted line greater than end decrease all cursors previous
+    if (_lines[_cur_line].cursor().row() == (_win_end.row() - 1))
+    {
+        for (size_t i = 0; i < _cur_line; i++)
+        {
+            _lines[i].cursor() - 1;
+
+            if (_lines[i].cursor().row() >= _win_start.row())
+            {
+                wmove(_win, _lines[i].cursor().row(), 0);
+                wclrtoeol(_win);
+
+                _lines[i].draw();
+            }
+        }
+    }
+    else
+    {
+        for (size_t i = _cur_line; i < _lines.size(); i++)
+        {
+            _lines[i].cursor() + 1;
+
+            if (_lines[i].cursor().row() < _win_end.row())
+            {
+                wmove(_win, _lines[i].cursor().row(), 0);
+                wclrtoeol(_win);
+
+                _lines[i].draw();
+            }
+        }
+    }
+
+    wmove(_win, _lines[_cur_line].cursor().row(), 0);
+    wclrtoeol(_win);
+    _lines[_cur_line].draw();
+
+    set();
+}
+
+void TextPane::remove(int ch)
+{
+    WindowEntry& e(entry());
+
+    if ((_cur_line < (_lines.size() - 1))
+            && (_me->mode() == MODE_INSERT)
+            && (e.position() == e.size()))
+    {
+        string s(_lines[_cur_line + 1].data());
+
+        e.insert(s);
+
+        _lines.erase(_lines.begin() + _cur_line + 1);
+
+        for (size_t i = _cur_line + 1; i < _lines.size(); i++)
+        {
+            _lines[i].cursor() - 1;
+
+            if ((_lines[i].cursor().row() >= _win_start.row())
+                    && (_lines[i].cursor().row() < _win_end.row()))
+            {
+                wmove(_win, _lines[i].cursor().row(), 0);
+                wclrtoeol(_win);
+
+                _lines[i].draw();
+            }
+        }
+
+        return;
+    }
+
+    WindowPane::remove(ch);
+}
+
+void TextPane::remove_left(int ch)
+{
+    WindowEntry& e(entry());
+
+    if ((_cur_line > 0) && (e.position() == 0))
+    {
+        string s(e.data());
+
+        _lines[_cur_line - 1].insert(s);
+
+        _lines.erase(_lines.begin() + _cur_line);
+
+        for (size_t i = _cur_line; i < _lines.size(); i++)
+        {
+            _lines[i].cursor() - 1;
+
+            if ((_lines[i].cursor().row() >= _win_start.row())
+                    && (_lines[i].cursor().row() < _win_end.row()))
+            {
+                wmove(_win, _lines[i].cursor().row(), 0);
+                wclrtoeol(_win);
+
+                _lines[i].draw();
+            }
+        }
+
+        return;
+    }
+
+    WindowPane::remove_left(ch);
+}
+
+void TextPane::remove_line(int ch)
+{
+    _clear_toggle ^= 1;
+
+    if (!_clear_toggle)
+        return;
+
+    WindowEntry& e(entry());
+    string s(e.data());
+
+    if (_lines.size() > 1)
+    {
+        if (_lines[_lines.size() - 1].cursor().row() < _win_end.row())
+        {
+            wmove(_win, _lines[_lines.size() - 1].cursor().row(), 0);
+            wclrtoeol(_win);
+        }
+
+        _lines.erase(_lines.begin() + _cur_line);
+
+        for (size_t i = _cur_line; i < _lines.size(); i++)
+        {
+            _lines[i].cursor() - 1;
+
+            if ((_lines[i].cursor().row() >= _win_start.row())
+                    && (_lines[i].cursor().row() < _win_end.row()))
+            {
+                wmove(_win, _lines[i].cursor().row(), 0);
+                wclrtoeol(_win);
+
+                _lines[i].draw();
+            }
+        }
+
+        if (_cur_line == _lines.size())
+            _cur_line--;
+    }
+    else
+    {
+        e.clear();
+    }
+
+    if (!s.empty())
+        _me->yanked(s);
+}
+
+void TextPane::clear_all(int ch)
+{
+    _lines.clear();
+    _cur_line = 0;
+    _lines.push_back(WindowEntry(_win, _win_start));
+
+    for (size_t i = _win_start.row(); i < _win_end.row(); i++)
+    {
+        wmove(_win, i, 0);
+        wclrtoeol(_win);
+    }
+}
+
+void TextPane::up(int ch)
+{
+    if (_cur_line == 0)
+        return;
+
+    _cur_line--;
+
+    if (_lines[_cur_line].cursor().row() < _win_start.row())
+    {
+        for (size_t i = 0; i < _lines.size(); i++)
+        {
+            _lines[i].cursor() + 1;
+
+            if ((_lines[i].cursor().row() >= _win_start.row())
+                    && (_lines[i].cursor().row() < _win_end.row()))
+            {
+                wmove(_win, _lines[i].cursor().row(), 0);
+                wclrtoeol(_win);
+
+                _lines[i].draw();
+            }
+        }
+    }
+
+    WindowEntry& e(entry());
+
+    e.mpos(_cur_col);
+    if ((_me->mode() != MODE_INSERT)
+            && (e.position() == e.size()))
+    {
+        e << 1;
+    }
+}
+
+void TextPane::down(int ch)
+{
+    if ((_cur_line + 1) >= _lines.size())
+        return;
+
+    _cur_line++;
+
+    if (_lines[_cur_line].cursor().row() == _win_end.row())
+    {
+        for (size_t i = 0; i < _lines.size(); i++)
+        {
+            _lines[i].cursor() - 1; 
+
+            if ((_lines[i].cursor().row() >= _win_start.row())
+                    && (_lines[i].cursor().row() < _win_end.row()))
+            {
+                wmove(_win, _lines[i].cursor().row(), 0);
+                wclrtoeol(_win);
+
+                _lines[i].draw();
+            }
+        }
+    }
+
+    WindowEntry& e(entry());
+
+    e.mpos(_cur_col);
+    if ((_me->mode() != MODE_INSERT)
+            && (e.position() == e.size()))
+    {
+        e << 1;
+    }
+}
+
+void TextPane::pane_begin(int ch)
+{
+    size_t win_rows = _win_end.row() - _win_start.row();
+    size_t num_lines = _cur_line > win_rows ? win_rows : 0;
+
+    _cur_line = 0;
+
+    if (num_lines)
+    {
+        size_t row_start = _win_start.row();
+        for (size_t i = 0; i < _lines.size(); i++)
+        {
+            _lines[i].cursor().row(row_start + i);
+
+            if (i < num_lines)
+            {
+                wmove(_win, row_start + i, 0);
+                wclrtoeol(_win);
+
+                _lines[i].draw();
+            }
+        }
+    }
+
+    line_begin(ch);
+}
+
+void TextPane::pane_end(int ch)
+{
+    size_t win_rows = _win_end.row() - _win_start.row();
+    size_t num_lines = (_lines.size() - 1) - _cur_line > win_rows ? win_rows : 0;
+
+    _cur_line = _lines.size() - 1;
+
+    if (num_lines)
+    {
+        size_t row_start = _win_start.row();
+        int r = _win_end.row() - 1;
+        for (int i = _lines.size() - 1; i >= 0; i--, r--)
+        {
+            _lines[i].cursor().row(r);
+
+            if (r >= row_start)
+            {
+                wmove(_win, r, 0);
+                wclrtoeol(_win);
+
+                _lines[i].draw();
+            }
+        }
+    }
+
+    line_end(ch);
 }
 
 //******************************************************************************
 //* MatrixPane *****************************************************************
 //******************************************************************************
 MatrixPane::MatrixPane(size_t n, MatrixEditor* me, WINDOW* w)
-    : WindowPane(me, w), _extra_data(0), _mp(MP_COEFFICIENT),
-      _n(n), _c_i(1), _c_j(1), _s_i(1), _v_i(1), _e_i(0),
+    : WindowPane(me, w), _mpp(MPP_MATRIX), _mp(MP_COEFFICIENT), _mtp(MTP_MATRIX_DATA),
+      _n(n), _c_i(0), _c_j(0), _s_i(0), _v_i(0), _t_i(0), _e_i(0),
       _c_col_width(10), _s_col_width(3), _v_col_width(3)
+{
+    _init();
+}
+
+MatrixPane::MatrixPane(size_t n, MatrixEditor* me, WINDOW* w, const Cursor& start, const Cursor& end)
+    : WindowPane(me, w, start, end), _mpp(MPP_MATRIX), _mp(MP_COEFFICIENT), _mtp(MTP_MATRIX_DATA),
+      _n(n), _c_i(0), _c_j(0), _s_i(0), _v_i(0), _t_i(0), _e_i(0),
+      _c_col_width(10), _s_col_width(3), _v_col_width(3)
+{
+    _init();
+}
+
+void MatrixPane::_init(void)
 {
     _c_matrix.resize(_n);
 
+    size_t win_row = _win_start.row();
     size_t win_col = 0;
     for (size_t i = 0; i < _n; i++)
     {
@@ -1628,7 +2029,8 @@ MatrixPane::MatrixPane(size_t n, MatrixEditor* me, WINDOW* w)
             else
                 mep = MatrixEntry::MEP_END;
 
-            _c_matrix[i][j] = MatrixEntry(_win, Cursor(i+_header_rows, win_col), _c_col_width, mep);
+            Cursor c(win_row + _header_rows + i, win_col);
+            _c_matrix[i][j] = MatrixEntry(_win, c, _c_col_width, mep);
 
             win_col += _c_matrix[i][j].width() + 3;
         }
@@ -1638,19 +2040,32 @@ MatrixPane::MatrixPane(size_t n, MatrixEditor* me, WINDOW* w)
     //win_col += _col_spacing + _vector_spacing + _col_spacing + _pad + _s_col_width + 1;
     win_col += _vector_spacing + 1;
     for (size_t i = 0; i < _n; i++)
-        _s_vector[i] = MatrixEntry(_win, Cursor(i+_header_rows, win_col), _s_col_width);
+    {
+        Cursor c(win_row + _header_rows + i, win_col);
+        _s_vector[i] = MatrixEntry(_win, c, _s_col_width);
+    }
 
     _v_vector.resize(_n);
     //win_col += _col_spacing + _vector_spacing + _col_spacing + _pad + _v_col_width + 1;
     win_col += _s_vector[0].width() + 3 + _vector_spacing + 1;
     for (size_t i = 0; i < _n; i++)
-        _v_vector[i] = MatrixEntry(_win, Cursor(i+_header_rows, win_col), _v_col_width);
+    {
+        Cursor c(win_row + _header_rows + i, win_col);
+        _v_vector[i] = MatrixEntry(_win, c, _v_col_width);
+    }
+
+    Cursor start_pane(win_row + _header_rows + _n + 1, 0);
+    Cursor end_pane(_win_end.row() - 1, 0);
+    //_text_panes[MTP_MATRIX_DATA] = TextPane(_me, _win, start_pane, end_pane);
+    //_text_panes[MTP_TEXT] = TextPane(_me, _win, start_pane, end_pane);
+    _text_panes.insert(pair<MatrixTextPart, TextPane>(MTP_MATRIX_DATA, TextPane(_me, _win, start_pane, end_pane)));
+    _text_panes.insert(pair<MatrixTextPart, TextPane>(MTP_TEXT, TextPane(_me, _win, start_pane, end_pane)));
 }
 
 #if 0
 MatrixPane::MatrixPane(size_t n, MatrixEditor* me, WINDOW* w)
-    : WindowPane(me, w), _extra_data(0), _mp(MP_COEFFICIENT),
-    _n(n), _c_i(1), _c_j(1), _s_i(1), _v_i(1), _e_i(0),
+    : WindowPane(me, w), _extra(0), _mp(MP_COEFFICIENT),
+    _n(n), _c_i(0), _c_j(0), _s_i(0), _v_i(0), _e_i(0),
     _c_col_width(10), _s_col_width(3), _v_col_width(3), _cur_hist_entry(0)
 {
     _c_matrix.resize(_n);
@@ -1681,22 +2096,15 @@ MatrixPane::MatrixPane(size_t n, MatrixEditor* me, WINDOW* w)
 
 MatrixPane::MatrixPane(const MatrixPane& rhs)
     : WindowPane(rhs),
-    _c_matrix(rhs._c_matrix), _s_vector(rhs._s_vector), _v_vector(rhs._v_vector), _mp(rhs._mp),
-    _n(rhs._n), _c_i(rhs._c_i), _c_j(rhs._c_j), _s_i(rhs._s_i), _v_i(rhs._v_i), _e_i(rhs._e_i),
+    _c_matrix(rhs._c_matrix), _s_vector(rhs._s_vector), _v_vector(rhs._v_vector),
+    _text_panes(rhs._text_panes), _mpp(rhs._mpp), _mp(rhs._mp), _mtp(rhs._mtp),
+    _n(rhs._n), _c_i(rhs._c_i), _c_j(rhs._c_j), _s_i(rhs._s_i), _v_i(rhs._v_i),
+    _t_i(rhs._t_i), _e_i(rhs._e_i),
     _c_col_width(rhs._c_col_width), _s_col_width(rhs._s_col_width), _v_col_width(rhs._v_col_width),
     _pad(rhs._pad), _col_spacing(rhs._col_spacing), _vector_spacing(rhs._vector_spacing),
     _header_rows(rhs._header_rows),
     _valid_screen_chars(rhs._valid_screen_chars), _key_mode_actions(rhs._key_mode_actions)
 {
-    auto it = _extra_data.begin();
-    while (it != _extra_data.end())
-    {
-        delete *it;
-        it = _extra_data.erase(it);
-    }
-
-    for (auto r_it = rhs._extra_data.begin(); r_it != rhs._extra_data.end(); ++r_it)
-        _extra_data.push_back(new WindowEntry(**r_it));
 }
 
 MatrixPane& MatrixPane::operator=(const MatrixPane& rhs)
@@ -1710,13 +2118,18 @@ MatrixPane& MatrixPane::operator=(const MatrixPane& rhs)
     _s_vector = rhs._s_vector;
     _v_vector = rhs._v_vector;
 
+    _text_panes = rhs._text_panes;
+
+    _mpp = rhs._mpp;
     _mp = rhs._mp;
+    _mtp = rhs._mtp;
 
     _n = rhs._n;
     _c_i = rhs._c_i;
     _c_j = rhs._c_j;
     _s_i = rhs._s_i;
     _v_i = rhs._v_i;
+    _t_i = rhs._t_i;
     _e_i = rhs._e_i;
 
     _c_col_width = rhs._c_col_width;
@@ -1731,54 +2144,52 @@ MatrixPane& MatrixPane::operator=(const MatrixPane& rhs)
     _valid_screen_chars = rhs._valid_screen_chars;
     _key_mode_actions = rhs._key_mode_actions;
 
-    auto it = _extra_data.begin();
-    while (it != _extra_data.end())
-    {
-        delete *it;
-        it = _extra_data.erase(it);
-    }
-
-    for (auto r_it = rhs._extra_data.begin(); r_it != rhs._extra_data.end(); ++r_it)
-        _extra_data.push_back(new WindowEntry(**r_it));
-
     return *this;
 }
 
 MatrixPane::~MatrixPane(void)
 {
-    auto it = _extra_data.begin();
-    while (it != _extra_data.end())
-    {
-        delete *it;
-        it = _extra_data.erase(it);
-    }
 }
 
-WindowPane::KeyAction MatrixPane::key_action(int ch, EditorMode m)
+void MatrixPane::key_action(int ch, EditorMode m)
 {
-    if (_key_mode_actions.find(ch) == _key_mode_actions.end())
+    if ((_mpp != MPP_MATRIX) && (ch != ''))
     {
-        if ((m == MODE_INSERT) && is_print(ch))
-            return &WindowPane::insert;
-        else if ((m == MODE_REPLACE) && is_print(ch))
-            return &WindowPane::replace;
+        //_text_panes[_mtp].key_action(ch, m);
+        auto it = _text_panes.find(_mtp);
+        it->second.key_action(ch, m);
     }
     else
     {
-        switch (m)
+        if (_key_mode_actions.find(ch) == _key_mode_actions.end())
         {
-            case MODE_INSERT:
-                return _key_mode_actions[ch].insert_mode_action;
-            case MODE_EDIT:
-                return _key_mode_actions[ch].edit_mode_action;
-            case MODE_VISUAL:
-                return _key_mode_actions[ch].visual_mode_action;
-            case MODE_REPLACE:
-                return _key_mode_actions[ch].replace_mode_action;
+            if ((m == MODE_INSERT) && is_print(ch))
+                insert(ch);
+            else if ((m == MODE_REPLACE) && is_print(ch))
+                replace(ch);
+        }
+        else
+        {
+            switch (m)
+            {
+                case MODE_INSERT:
+                    MEW_CALL(*this, _key_mode_actions[ch].insert_mode_action)(ch);
+                    break;
+                case MODE_EDIT:
+                    MEW_CALL(*this, _key_mode_actions[ch].edit_mode_action)(ch);
+                    break;
+                case MODE_VISUAL:
+                    MEW_CALL(*this, _key_mode_actions[ch].visual_mode_action)(ch);
+                    break;
+                case MODE_REPLACE:
+                    MEW_CALL(*this, _key_mode_actions[ch].replace_mode_action)(ch);
+                    break;
+                default:
+                    no_op(ch);
+                    break;
+            }
         }
     }
-
-    return &WindowPane::no_op;
 }
 
 bool MatrixPane::is_print(int ch)
@@ -1812,14 +2223,14 @@ void MatrixPane::draw(void)
     int y, x;
     getyx(_win, y, x);
 
-    wmove(_win, 0, 0);
+    wmove(_win, _win_start.row(), 0);
     wattr_on(_win, A_BOLD, NULL);
     wprintw(_win, "[ Coefficient Matrix ]-1 x [ Constants Vector ] = [ Unknowns Vector ]\n");
     wattr_off(_win, A_BOLD, NULL);
 
     for (size_t i = 0; i < _n; i++)
     {
-        wmove(_win, i+_header_rows, 0);
+        wmove(_win, _win_start.row()+_header_rows+i, 0);
 
         //waddch(_win, (chtype)'[' | A_BOLD);
         //waddch(_win, ' ');
@@ -1874,15 +2285,7 @@ void MatrixPane::draw(void)
         //waddch(_win, (chtype)']' | A_BOLD);
     }
 
-    _e_i = 0;
-    auto it = _extra_data.begin();
-    while (it != _extra_data.end())
-    {
-        delete *it;
-        it = _extra_data.erase(it);
-    }
-
-    wclrtobot(_win);
+    //wclrtobot(_win);
 
     curs_set(old_curs);
     wmove(_win, y, x);
@@ -1895,38 +2298,25 @@ WindowEntry& MatrixPane::entry(size_t row, size_t col)
     switch (_mp)
     {
         case MP_COEFFICIENT:
-            if (row > _n)
-                row = _n;
+            if (row >= _n)
+                row = _n - 1;
 
-            if (col > _n)
-                col = _n;
-            else if (col == 0)
-                col = 1;
+            if (col >= _n)
+                col = _n - 1;
 
-            return _c_matrix[row-1][col-1];
+            return _c_matrix[row][col];
 
         case MP_CONSTANTS:
-            if (row > _n)
-                row = _n;
+            if (row >= _n)
+                row = _n - 1;
 
-            return _s_vector[row-1];
+            return _s_vector[row];
 
         case MP_UNKNOWNS:
-            if (row > _n)
-                row = _n;
+            if (row >= _n)
+                row = _n - 1;
 
-            return _v_vector[row-1];
-
-        case MP_EXTRA_DATA:
-            if (!_extra_data.empty())
-            {
-                if (row > _extra_data.size())
-                    row = _extra_data.size();
-                else if (row == 0)
-                    row = 1;
-
-                return *_extra_data[row-1];
-            }
+            return _v_vector[row];
     }
 
     return not_found;
@@ -1946,9 +2336,6 @@ WindowEntry& MatrixPane::entry(void)
 
         case MP_UNKNOWNS:
             return entry(_v_i);
-
-        case MP_EXTRA_DATA:
-            return entry(_e_i);
     }
 
     return not_found;
@@ -2023,39 +2410,26 @@ bool MatrixPane::adjust(size_t width)
             }
 
             break;
-
-        case MP_EXTRA_DATA:
-            return false;
     }
 
     return true;
 }
 
-void MatrixPane::set(void)
-{
-    switch (_mp)
-    {
-        case MP_COEFFICIENT:
-            entry(_c_i, _c_j).set();
-            break;
-        case MP_CONSTANTS:
-            entry(_s_i).set();
-            break;
-        case MP_UNKNOWNS:
-            entry(_v_i).set();
-            break;
-        case MP_EXTRA_DATA:
-            entry(_e_i).set();
-            break;
-    }
-}
-
 void MatrixPane::refresh(void)
 {
-    if (adjust(entry().width()))
-        draw();
+    if (_mpp == MPP_MATRIX)
+    {
+        if (adjust(entry().width()))
+            draw();
 
-    set();
+        set();
+    }
+    else
+    {
+        auto it = _text_panes.find(_mtp);
+        it->second.set();
+    }
+
     wrefresh(_win);
 }
 
@@ -2069,25 +2443,41 @@ void MatrixPane::remove(int ch)
     entry().remove();
 }
 
+void MatrixPane::clear_all(int ch)
+{
+    for (size_t i = 0; i < _n; i++)
+    {
+        for (size_t j = 0; j < _n; j++)
+            _c_matrix[i][j].clear();
+    }
+
+    for (size_t i = 0; i < _n; i++)
+        _s_vector[i].clear();
+
+    for (size_t i = 0; i < _n; i++)
+        _v_vector[i].clear();
+
+    _c_i = _c_j = _s_i = _v_i = 0;
+    _mp = MP_COEFFICIENT;
+
+    set();
+}
+
 void MatrixPane::up(int ch)
 {
     switch (_mp)
     {
         case MP_COEFFICIENT:
-            if (_c_i > 1)
+            if (_c_i > 0)
                 _c_i--;
             break;
         case MP_CONSTANTS:
-            if (_s_i > 1)
+            if (_s_i > 0)
                 _s_i--;
             break;
         case MP_UNKNOWNS:
-            if (_v_i > 1)
+            if (_v_i > 0)
                 _v_i--;
-            break;
-        case MP_EXTRA_DATA:
-            if (_e_i > 1)
-                _e_i--;
             break;
     }
 
@@ -2099,20 +2489,16 @@ void MatrixPane::down(int ch)
     switch (_mp)
     {
         case MP_COEFFICIENT:
-            if (_c_i < _n)
+            if (_c_i < (_n - 1))
                 _c_i++;
             break;
         case MP_CONSTANTS:
-            if (_s_i < _n)
+            if (_s_i < (_n - 1))
                 _s_i++;
             break;
         case MP_UNKNOWNS:
-            if (_v_i < _n)
+            if (_v_i < (_n - 1))
                 _v_i++;
-            break;
-        case MP_EXTRA_DATA:
-            if (_e_i < _n)
-                _e_i++;
             break;
     }
 
@@ -2124,31 +2510,23 @@ void MatrixPane::prev(int ch)
     switch (_mp)
     {
         case MP_COEFFICIENT:
-            if ((_c_i == 1) && (_c_j == 1))
+            if ((_c_i == 0) && (_c_j == 0))
             {
-                if (_extra_data.empty())
+                if (_v_vector[0].empty())
                 {
-                    if (_v_vector[0].empty())
-                    {
-                        _mp = MP_CONSTANTS;
-                        _s_i = _n;
-                    }
-                    else
-                    {
-                        _mp = MP_UNKNOWNS;
-                        _v_i = _n;
-                    }
+                    _mp = MP_CONSTANTS;
+                    _s_i = _n - 1;
                 }
                 else
                 {
-                    _mp = MP_EXTRA_DATA;
-                    _e_i = _extra_data.size();
+                    _mp = MP_UNKNOWNS;
+                    _v_i = _n - 1;
                 }
             }
-            else if (_c_j == 1)
+            else if (_c_j == 0)
             {
                 _c_i--;
-                _c_j = _n;
+                _c_j = _n - 1;
             }
             else
             {
@@ -2157,10 +2535,10 @@ void MatrixPane::prev(int ch)
             break;
 
         case MP_CONSTANTS:
-            if (_s_i == 1)
+            if (_s_i == 0)
             {
                 _mp = MP_COEFFICIENT;
-                _c_i = _c_j = _n;
+                _c_i = _c_j = _n - 1;
             }
             else
             {
@@ -2169,26 +2547,14 @@ void MatrixPane::prev(int ch)
             break;
 
         case MP_UNKNOWNS:
-            if (_v_i == 1)
+            if (_v_i == 0)
             {
                 _mp = MP_CONSTANTS;
-                _s_i = _n;
+                _s_i = _n - 1;
             }
             else
             {
                 _v_i--;
-            }
-            break;
-
-        case MP_EXTRA_DATA:
-            if (_e_i == 1)
-            {
-                _mp = MP_UNKNOWNS;
-                _v_i = _n;
-            }
-            else
-            {
-                _e_i--;
             }
             break;
     }
@@ -2201,15 +2567,15 @@ void MatrixPane::next(int ch)
     switch (_mp)
     {
         case MP_COEFFICIENT:
-            if ((_c_i == _n) && (_c_j == _n))
+            if ((_c_i == (_n - 1)) && (_c_j == (_n - 1)))
             {
                 _mp = MP_CONSTANTS;
-                _s_i = 1;
+                _s_i = 0;
             }
-            else if (_c_j == _n)
+            else if (_c_j == (_n - 1))
             {
                 _c_i++;
-                _c_j = 1;
+                _c_j = 0;
             }
             else
             {
@@ -2218,17 +2584,17 @@ void MatrixPane::next(int ch)
             break;
 
         case MP_CONSTANTS:
-            if (_s_i == _n)
+            if (_s_i == (_n - 1))
             {
                 if (_v_vector[0].empty())
                 {
                     _mp = MP_COEFFICIENT;
-                    _c_i = _c_j = 1;
+                    _c_i = _c_j = 0;
                 }
                 else
                 {
                     _mp = MP_UNKNOWNS;
-                    _v_i = 1;
+                    _v_i = 0;
                 }
             }
             else
@@ -2238,34 +2604,14 @@ void MatrixPane::next(int ch)
             break;
 
         case MP_UNKNOWNS:
-            if (_v_i == _n)
+            if (_v_i == (_n - 1))
             {
-                if (_extra_data.empty())
-                {
-                    _mp = MP_COEFFICIENT;
-                    _c_i = _c_j = 1;
-                }
-                else
-                {
-                    _mp = MP_EXTRA_DATA;
-                    _e_i = 1;
-                }
+                _mp = MP_COEFFICIENT;
+                _c_i = _c_j = 0;
             }
             else
             {
                 _v_i++;
-            }
-            break;
-
-        case MP_EXTRA_DATA:
-            if (_e_i == _extra_data.size())
-            {
-                _mp = MP_COEFFICIENT;
-                _c_i = _c_j = 1;
-            }
-            else
-            {
-                _e_i++;
             }
             break;
     }
@@ -2276,30 +2622,22 @@ void MatrixPane::next(int ch)
 void MatrixPane::pane_begin(int ch)
 {
     _mp = MP_COEFFICIENT;
-    _c_i = _c_j = 1;
+    _c_i = _c_j = 0;
 
     set();
 }
 
 void MatrixPane::pane_end(int ch)
 {
-    if (_extra_data.empty())
+    if (_v_vector[0].empty())
     {
-        if (_v_vector[0].empty())
-        {
-            _mp = MP_CONSTANTS;
-            _s_i = _n;
-        }
-        else
-        {
-            _mp = MP_UNKNOWNS;
-            _v_i = _n;
-        }
+        _mp = MP_CONSTANTS;
+        _s_i = _n - 1;
     }
     else
     {
-        _mp = MP_EXTRA_DATA;
-        _e_i = _extra_data.size();
+        _mp = MP_UNKNOWNS;
+        _v_i = _n - 1;
     }
 
     set();
@@ -2307,21 +2645,55 @@ void MatrixPane::pane_end(int ch)
 
 void MatrixPane::special(int ch)
 {
-    solve();
+    if (ch == '')
+    {
+        ch = wgetch(_win);
+
+        switch (ch)
+        {
+            case KEY_UP:
+                _mpp = MPP_MATRIX;
+                set();
+                break;
+
+            case KEY_DOWN:
+                {
+                    _mpp = MPP_TEXT;
+                    //_text_panes[_mtp].set();
+                    auto it = _text_panes.find(_mtp);
+                    it->second.set();
+                }
+                break;
+
+            case KEY_LEFT:
+                {
+                    _mtp = MTP_MATRIX_DATA;
+                    //_text_panes[_mtp].redraw();
+                    auto it = _text_panes.find(_mtp);
+                    it->second.redraw();
+                }
+                break;
+
+            case KEY_RIGHT:
+                {
+                    _mtp = MTP_TEXT;
+                    //_text_panes[_mtp].redraw();
+                    auto it = _text_panes.find(_mtp);
+                    it->second.redraw();
+                }
+                break;
+        }
+    }
+    else
+    {
+        solve();
+    }
 }
 
 void MatrixPane::solve(void)
 {
     size_t i, j;
     int old_curs = curs_set(0);
-
-    _e_i = 0;
-    auto it = _extra_data.begin();
-    while (it != _extra_data.end())
-    {
-        delete *it;
-        it = _extra_data.erase(it);
-    }
 
     for (i = 0; i < _n; i++)
     {
@@ -2335,8 +2707,8 @@ void MatrixPane::solve(void)
                 _me->error(oss.str());
                 cancel(K_ESCAPE);
 
-                _c_i = i+1;
-                _c_j = j+1;
+                _c_i = i;
+                _c_j = j;
                 _mp = MP_COEFFICIENT;
 
                 set();
@@ -2357,7 +2729,7 @@ void MatrixPane::solve(void)
             _me->error(oss.str());
             cancel(K_ESCAPE);
 
-            _s_i = i+1;
+            _s_i = i;
             _mp = MP_CONSTANTS;
 
             set();
@@ -2387,8 +2759,8 @@ void MatrixPane::solve(void)
         _me->error(oss.str());
         cancel(K_ESCAPE);
 
-        _c_i = i+1;
-        _c_j = j+1;
+        _c_i = i;
+        _c_j = j;
         _mp = MP_COEFFICIENT;
 
         set();
@@ -2414,7 +2786,7 @@ void MatrixPane::solve(void)
         _me->error(oss.str());
         cancel(K_ESCAPE);
 
-        _s_i = i+1;
+        _s_i = i;
         _mp = MP_CONSTANTS;
 
         set();
@@ -2457,7 +2829,7 @@ void MatrixPane::solve(void)
         cancel(K_ESCAPE);
 
         _mp = MP_COEFFICIENT;
-        _c_i = _c_j = 1;
+        _c_i = _c_j = 0;
 
         set();
         curs_set(old_curs);
@@ -2495,7 +2867,7 @@ void MatrixPane::solve(void)
     bool need_adjust = false;
 
     _mp = MP_UNKNOWNS;
-    _v_i = 1;
+    _v_i = 0;
 
     for (i = 0; i < _n; i++)
     {
@@ -2542,28 +2914,27 @@ void MatrixPane::solve(void)
     string str;
     size_t pos;
 
-    _e_i = 0;
+    _mtp = MTP_MATRIX_DATA;
+    //TextPane& mdata(_text_panes[_mtp]);
+    auto it = _text_panes.find(_mtp);
+    TextPane& mdata(it->second);
+
+    mdata.clear_all('C');
+    curs_row = 0;
 
     // Determinant
-    wattr_on(_win, A_BOLD, NULL);
-    mvwaddstr(_win, curs_row, 0, "Determinant:");
-    wattr_off(_win, A_BOLD, NULL);
+    str = "Determinant: ";
     {
         ostringstream oss;
         oss << A.determinant();
-        str = oss.str();
-
-        _extra_data.push_back(new EvalEntry(_win, Cursor(++curs_row, 0), str));
+        str += oss.str();
     }
+    mdata[curs_row++] = str;
 
-    wgetch(_win);
-
-    curs_row++;
+    mdata[curs_row++] = "";
 
     // Cofactor matrix
-    wattr_on(_win, A_BOLD, NULL);
-    mvwaddstr(_win, ++curs_row, 0, "Cofactor Matrix:");
-    wattr_off(_win, A_BOLD, NULL);
+    mdata[curs_row++] = "Cofactor Matrix:";
     {
         ostringstream oss;
         oss << A.cofactor_matrix();
@@ -2573,49 +2944,15 @@ void MatrixPane::solve(void)
         {
             pos = str.find('\n');
             if (pos > 0)
-                _extra_data.push_back(new MatrixEntry(_win, Cursor(++curs_row, 0), str.substr(0, pos)));
+                mdata[curs_row++] = str.substr(0, pos);
             str.erase(0, pos + 1);
         }
-#if 0
-        Matrix<Scientific> CF(A.cofactor_matrix());
-        vector<MatrixEntry*> cofactor_matrix;
-        size_t max_size = 0;
-        for (size_t i = 1; i <= CF.rows(); i++)
-        {
-            size_t col = 0;
-            for (size_t j = 1; j <= CF.cols(); j++)
-            {
-                ostringstream oss;
-                oss << CF(i,j);
-                str = oss.str();
-
-                if (str.size() > max_size)
-                    max_size = str.size();
-
-                MatrixEntry::MatrixEntryPosition mep;
-                if (j == 1)
-                    mep = MatrixEntry::MEP_START;
-                else if (j == CF.cols())
-                    mep = MatrixEntry::MEP_END;
-                else
-                    mep = MatrixEntry::MEP_MIDDLE;
-
-                MatrixEntry* me = new MatrixEntry(_win, Cursor(curs_row + i, col), str, mep);
-                _cofacor_matrix.push_back(me);
-                col += me->width() + 3;
-            }
-        }
-
-        curs_row += CF.rows();
-#endif
     }
 
-    curs_row++;
+    mdata[curs_row++] = "";
 
     // Adjoint matrix
-    wattr_on(_win, A_BOLD, NULL);
-    mvwaddstr(_win, ++curs_row, 0, "Adjoint:");
-    wattr_off(_win, A_BOLD, NULL);
+    mdata[curs_row++] = "Adjoint:";
     {
         ostringstream oss;
         oss << A.adjoint();
@@ -2625,17 +2962,15 @@ void MatrixPane::solve(void)
         {
             pos = str.find('\n');
             if (pos > 0)
-                _extra_data.push_back(new MatrixEntry(_win, Cursor(++curs_row, 0), str.substr(0, pos)));
+                mdata[curs_row++] = str.substr(0, pos);
             str.erase(0, pos + 1);
         }
     }
 
-    curs_row++;
+    mdata[curs_row++] = "";
 
     // Inverse matrix
-    wattr_on(_win, A_BOLD, NULL);
-    mvwaddstr(_win, ++curs_row, 0, "Inverse:");
-    wattr_off(_win, A_BOLD, NULL);
+    mdata[curs_row++] = "Inverse:";
     {
         ostringstream oss;
         oss << A.inverse();
@@ -2645,18 +2980,15 @@ void MatrixPane::solve(void)
         {
             pos = str.find('\n');
             if (pos > 0)
-                _extra_data.push_back(new MatrixEntry(_win, Cursor(++curs_row, 0), str.substr(0, pos)));
+                mdata[curs_row++] = str.substr(0, pos);
             str.erase(0, pos + 1);
         }
     }
 
-    curs_row++;
+    mdata[curs_row++] = "";
 
     // Cramer's rule matices
-    wattr_on(_win, A_BOLD, NULL);
-    mvwaddstr(_win, ++curs_row, 0, "Cramer's rule:");
-    wattr_off(_win, A_BOLD, NULL);
-
+    mdata[curs_row++] = "Cramer's rule:";
     for (j = 1; j <= A.rows(); j++)
     {
         ostringstream coss;
@@ -2669,7 +3001,7 @@ void MatrixPane::solve(void)
         cout.rdbuf(cout_buf);
 
         pos = str.find('\n');
-        _extra_data.push_back(new MatrixEntry(_win, Cursor(++curs_row, 0), str.substr(0, pos)));
+        mdata[curs_row++] = str.substr(0, pos);
 
         ostringstream oss;
         oss << CR;
@@ -2679,60 +3011,33 @@ void MatrixPane::solve(void)
         {
             pos = str.find('\n');
             if (pos > 0)
-                _extra_data.push_back(new MatrixEntry(_win, Cursor(++curs_row, 0), str.substr(0, pos)));
+                mdata[curs_row++] = str.substr(0, pos);
             str.erase(0, pos + 1);
         }
 
-        curs_row++;
+        mdata[curs_row++] = "";
     }
 
-    wgetch(_win);
-
-    int y, x, h, w;
-    getbegyx(_win, y, x);
-    getmaxyx(_win, h, w);
-
-    _e_i = 0;
-    int max_row = h - 1;
-    int scrolled = 0;
-    for (size_t i = 0; i < _extra_data.size(); i++)
-    {
-        Cursor& c(_extra_data[i]->cursor());
-
-        if (c.row() >= (max_row - 1))
-        {
-            wattr_on(_win, A_BOLD, NULL);
-            mvwprintw(_win, max_row, 0, "Press Enter to see more data...");
-            wattr_off(_win, A_BOLD, NULL);
-            wgetch(_win);
-            wmove(_win, max_row, 0);
-            wclrtoeol(_win);
-
-            int diff = c.row() - (max_row - 1);
-
-            wscrl(_win, diff - scrolled + 1);
-            scrolled += diff - scrolled + 1;
-
-            c - (diff + 1);
-        }
-
-        _extra_data[i]->update();
-    }
-
-    //wgetch(_win);
-    //wscrl(_win, -5);
-    //wgetch(_win);
-    //wscrl(_win, 5);
-
-    wgetch(_win);
+    mdata.draw();
     set();
     curs_set(old_curs);
     cancel(K_ESCAPE);
 }
 
 EvalPane::EvalPane(MatrixEditor* me, WINDOW* w)
-    : WindowPane(me, w), _win_offset(2), _e_entry(EvalEntry(_win, Cursor(0, _win_offset)))
+    : WindowPane(me, w), _win_offset(2)
 {
+    Cursor c(_win_start);
+    c >> _win_offset;
+    _e_entry = EvalEntry(_win, c);
+}
+
+EvalPane::EvalPane(MatrixEditor* me, WINDOW* w, const Cursor& start, const Cursor& end)
+    : WindowPane(me, w, start, end), _win_offset(2)
+{
+    Cursor c(_win_start);
+    c >> _win_offset;
+    _e_entry = EvalEntry(_win, c);
 }
 
 EvalPane::EvalPane(const EvalPane& rhs)
@@ -2755,31 +3060,36 @@ EvalPane& EvalPane::operator=(const EvalPane& rhs)
     return *this;
 }
 
-WindowPane::KeyAction EvalPane::key_action(int ch, EditorMode m)
+void EvalPane::key_action(int ch, EditorMode m)
 {
     if (_key_mode_actions.find(ch) == _key_mode_actions.end())
     {
         if ((m == MODE_INSERT) && is_print(ch))
-            return &WindowPane::insert;
+            insert(ch);
         else if ((m == MODE_REPLACE) && is_print(ch))
-            return &WindowPane::replace;
+            replace(ch);
     }
     else
     {
         switch (m)
         {
             case MODE_INSERT:
-                return _key_mode_actions[ch].insert_mode_action;
+                MEW_CALL(*this, _key_mode_actions[ch].insert_mode_action)(ch);
+                break;
             case MODE_EDIT:
-                return _key_mode_actions[ch].edit_mode_action;
+                MEW_CALL(*this, _key_mode_actions[ch].edit_mode_action)(ch);
+                break;
             case MODE_VISUAL:
-                return _key_mode_actions[ch].visual_mode_action;
+                MEW_CALL(*this, _key_mode_actions[ch].visual_mode_action)(ch);
+                break;
             case MODE_REPLACE:
-                return _key_mode_actions[ch].replace_mode_action;
+                MEW_CALL(*this, _key_mode_actions[ch].replace_mode_action)(ch);
+                break;
+            default:
+                no_op(ch);
+                break;
         }
     }
-
-    return &WindowPane::no_op;
 }
 
 bool EvalPane::is_print(int ch)
@@ -2821,7 +3131,7 @@ void EvalPane::draw(void)
     int y, x;
     getyx(_win, y, x);
 
-    wmove(_win, 0, 0);
+    wmove(_win, _win_start.row(), _win_start.col());
     wclrtoeol(_win);
 
     waddch(_win, (chtype)'>' | A_BOLD);
@@ -2858,7 +3168,7 @@ void EvalPane::solve(void)
     {
         Number<Scientific> n = Number<Scientific>::parse_expression(s);
 
-        wmove(_win, 2, 0);
+        wmove(_win, _win_start.row() + 2, 0);
 
         //ColorPair c(2,_color_pair.bg());
         //wcolor_set(_win, c.pair_number(), NULL);
@@ -3380,8 +3690,7 @@ void MatrixEditor::loop(void)
         if (ch == KEY_RESIZE)
             continue;
 
-        WindowPane::KeyAction ka(_current_editor_window->key_action(ch, _mode));
-        MEW_CALL(*_current_editor_window, ka)(ch);
+        _current_editor_window->key_action(ch, _mode);
 
         if (_exit_loop)
             break;
