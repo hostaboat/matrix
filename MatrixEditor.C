@@ -272,7 +272,8 @@ void WindowEntry::remove(int count)
     }
     else
     {
-        _data.erase(_data.begin() + ((_pos + 1) + count), _data.begin() + (_pos + 1));
+        _data.erase(_data.begin() + ((_pos + 1) + count),
+                _data.begin() + (_pos + 1));
         _pos += (count + 1);
         _win_pos >> (count + 1);
     }
@@ -726,7 +727,8 @@ MatrixEntry::MatrixEntry(WINDOW* w, const Cursor& c, MatrixEntryPosition mep)
     _win_pos >> (_width + 2);
 }
 
-MatrixEntry::MatrixEntry(WINDOW* w, const Cursor& c, size_t width, MatrixEntryPosition mep)
+MatrixEntry::MatrixEntry(WINDOW* w, const Cursor& c,
+        size_t width, MatrixEntryPosition mep)
     : WindowEntry(w, c), _width(width), _mep(mep)
 {
     if (_width == 0)
@@ -735,7 +737,8 @@ MatrixEntry::MatrixEntry(WINDOW* w, const Cursor& c, size_t width, MatrixEntryPo
     _win_pos >> (_width + 2);
 }
 
-MatrixEntry::MatrixEntry(WINDOW* w, const Cursor& c, string s, MatrixEntryPosition mep)
+MatrixEntry::MatrixEntry(WINDOW* w, const Cursor& c,
+        string s, MatrixEntryPosition mep)
     : WindowEntry(w, c, s), _mep(mep)
 {
     if (_data.empty())
@@ -747,7 +750,8 @@ MatrixEntry::MatrixEntry(WINDOW* w, const Cursor& c, string s, MatrixEntryPositi
     //_win_pos >> 2;
 }
 
-MatrixEntry::MatrixEntry(WINDOW* w, const Cursor& c, size_t width, string s, MatrixEntryPosition mep)
+MatrixEntry::MatrixEntry(WINDOW* w, const Cursor& c,
+        size_t width, string s, MatrixEntryPosition mep)
     : WindowEntry(w, c, s), _width(width), _mep(mep)
 {
     if (_data.empty() && (_width == 0))
@@ -805,6 +809,7 @@ void MatrixEntry::draw(void)
 void MatrixEntry::update(void)
 {
     int old_curs = curs_set(0);
+    //int move_amount = ((_width - _data.size()) + _pos);
     int move_amount = ((_width - _data.size()) + _pos) + 2;
 
     wmove(_win, _win_pos.row(), _win_pos.col() - move_amount);
@@ -815,22 +820,6 @@ void MatrixEntry::update(void)
 
     curs_set(old_curs);
 }
-
-#if 0
-void MatrixEntry::update(void)
-{
-    int old_curs = curs_set(0);
-    int move_amount = ((_width - _data.size()) + _pos);
-
-    wmove(_win, _win_pos.row(), _win_pos.col() - move_amount);
-
-    draw();
-
-    wmove(_win, _win_pos.row(), _win_pos.col());
-
-    curs_set(old_curs);
-}
-#endif
 
 void MatrixEntry::insert(char ch)
 {
@@ -870,7 +859,8 @@ void MatrixEntry::remove(int count)
     }
     else
     {
-        _data.erase(_data.begin() + ((_pos + 1) + count), _data.begin() + (_pos + 1));
+        _data.erase(_data.begin() + ((_pos + 1) + count),
+                _data.begin() + (_pos + 1));
         _pos += (count + 1);
         _win_pos >> 1;
     }
@@ -960,7 +950,8 @@ string MatrixEntry::info(void)
 //******************************************************************************
 WindowPane::WindowPane(MatrixEditor* me, WINDOW* w)
     : _me(me), _win(w), _color_pair(ColorPair(COLOR_BLACK, COLOR_WHITE)),
-      _clear_toggle(1), _yank_toggle(1), _begin_toggle(1), _history(0), _cur_hist_entry(0), _cur_col(0)
+      _clear_toggle(1), _yank_toggle(1), _begin_toggle(1),
+      _history(0), _cur_hist_entry(0), _cur_col(0)
 {
     int height, width;
 
@@ -972,18 +963,22 @@ WindowPane::WindowPane(MatrixEditor* me, WINDOW* w)
     wbkgd(_win, COLOR_PAIR(_color_pair.pair_number()));
 }
 
-WindowPane::WindowPane(MatrixEditor* me, WINDOW* w, const Cursor& start, const Cursor& end)
+WindowPane::WindowPane(MatrixEditor* me, WINDOW* w,
+        const Cursor& start, const Cursor& end)
     : _me(me), _win(w), _win_start(start), _win_end(end),
       _color_pair(ColorPair(COLOR_BLACK, COLOR_WHITE)),
-      _clear_toggle(1), _yank_toggle(1), _begin_toggle(1), _history(0), _cur_hist_entry(0), _cur_col(0)
+      _clear_toggle(1), _yank_toggle(1), _begin_toggle(1),
+      _history(0), _cur_hist_entry(0), _cur_col(0)
 {
     wbkgd(_win, COLOR_PAIR(_color_pair.pair_number()));
 }
 
 WindowPane::WindowPane(const WindowPane& rhs)
-    : _me(rhs._me), _win(rhs._win), _win_start(rhs._win_start), _win_end(rhs._win_end),
-      _color_pair(rhs._color_pair), _clear_toggle(rhs._clear_toggle), _yank_toggle(rhs._yank_toggle),
-      _begin_toggle(rhs._begin_toggle), _replaced(rhs._replaced), _history(rhs._history),
+    : _me(rhs._me), _win(rhs._win),
+      _win_start(rhs._win_start), _win_end(rhs._win_end),
+      _color_pair(rhs._color_pair), _clear_toggle(rhs._clear_toggle),
+      _yank_toggle(rhs._yank_toggle), _begin_toggle(rhs._begin_toggle),
+      _replaced(rhs._replaced), _history(rhs._history),
       _cur_hist_entry(rhs._cur_hist_entry), _cur_col(rhs._cur_col)
 {
     wbkgd(_win, COLOR_PAIR(_color_pair.pair_number()));
@@ -1587,7 +1582,8 @@ TextPane::TextPane(MatrixEditor* me, WINDOW* w)
     _tilde_fill = ColorPair(COLOR_BLUE, _color_pair.bg());
 }
 
-TextPane::TextPane(MatrixEditor* me, WINDOW* w, const Cursor& start, const Cursor& end)
+TextPane::TextPane(MatrixEditor* me, WINDOW* w,
+        const Cursor& start, const Cursor& end)
     : WindowPane(me, w, start, end), _lines(0), _cur_line(0)
 {
     _lines.push_back(WindowEntry(_win, _win_start));
@@ -1595,7 +1591,8 @@ TextPane::TextPane(MatrixEditor* me, WINDOW* w, const Cursor& start, const Curso
 }
 
 TextPane::TextPane(const TextPane& rhs)
-    : WindowPane(rhs), _lines(rhs._lines), _cur_line(rhs._cur_line), _tilde_fill(rhs._tilde_fill)
+    : WindowPane(rhs), _lines(rhs._lines),
+      _cur_line(rhs._cur_line), _tilde_fill(rhs._tilde_fill)
 {
 }
 
@@ -1732,7 +1729,6 @@ void TextPane::insert_line(int ch)
 
     _lines.insert(_lines.begin() + _cur_line, WindowEntry(_win, c, data));
 
-    // If cursor of newly inserted line greater than end decrease all cursors previous
     if (entry().cursor().row() == _win_end.row())
     {
         for (size_t i = 0; i <= _cur_line; i++)
@@ -1990,8 +1986,10 @@ MatrixPane::MatrixPane(size_t n, MatrixEditor* me, WINDOW* w)
     _init();
 }
 
-MatrixPane::MatrixPane(size_t n, MatrixEditor* me, WINDOW* w, const Cursor& start, const Cursor& end)
-    : WindowPane(me, w, start, end), _mpp(MPP_MATRIX), _mp(MP_COEFFICIENT), _mtp(MTP_TEXT),
+MatrixPane::MatrixPane(size_t n, MatrixEditor* me, WINDOW* w,
+        const Cursor& start, const Cursor& end)
+    : WindowPane(me, w, start, end), _mpp(MPP_MATRIX),
+      _mp(MP_COEFFICIENT), _mtp(MTP_TEXT),
       _n(n), _c_i(0), _c_j(0), _s_i(0), _v_i(0), _t_i(0), _e_i(0),
       _c_col_width(10), _s_col_width(3), _v_col_width(3)
 {
@@ -2031,7 +2029,8 @@ void MatrixPane::_init(void)
     }
 
     _s_vector.resize(_n);
-    //win_col += _col_spacing + _vector_spacing + _col_spacing + _pad + _s_col_width + 1;
+    //win_col += _col_spacing + _vector_spacing + _col_spacing
+    //    + _pad + _s_col_width + 1;
     win_col += _vector_spacing + 1;
     for (size_t i = 0; i < _n; i++)
     {
@@ -2040,7 +2039,8 @@ void MatrixPane::_init(void)
     }
 
     _v_vector.resize(_n);
-    //win_col += _col_spacing + _vector_spacing + _col_spacing + _pad + _v_col_width + 1;
+    //win_col += _col_spacing + _vector_spacing + _col_spacing
+    //    + _pad + _v_col_width + 1;
     win_col += _s_vector[0].width() + 3 + _vector_spacing + 1;
     for (size_t i = 0; i < _n; i++)
     {
@@ -2052,8 +2052,12 @@ void MatrixPane::_init(void)
     Cursor end_pane(_win_end.row() - 1, 0);
     //_text_panes[MTP_MATRIX_DATA] = TextPane(_me, _win, start_pane, end_pane);
     //_text_panes[MTP_TEXT] = TextPane(_me, _win, start_pane, end_pane);
-    _text_panes.insert(pair<MatrixTextPart, TextPane>(MTP_MATRIX_DATA, TextPane(_me, _win, start_pane, end_pane)));
-    _text_panes.insert(pair<MatrixTextPart, TextPane>(MTP_TEXT, TextPane(_me, _win, start_pane, end_pane)));
+    _text_panes.insert(
+            pair<MatrixTextPart, TextPane>(MTP_MATRIX_DATA,
+                TextPane(_me, _win, start_pane, end_pane)));
+    _text_panes.insert(
+            pair<MatrixTextPart, TextPane>(MTP_TEXT,
+                TextPane(_me, _win, start_pane, end_pane)));
 }
 
 #if 0
@@ -2072,19 +2076,28 @@ MatrixPane::MatrixPane(size_t n, MatrixEditor* me, WINDOW* w)
         for (size_t j = 0; j < _n; j++)
         {
             win_col = (j + 1) * (_col_spacing + _pad + _c_col_width) + j;
-            _c_matrix[i][j] = MatrixEntry(_win, Cursor(i+_header_rows, win_col), _c_col_width);
+            _c_matrix[i][j] =
+                MatrixEntry(_win, Cursor(i+_header_rows, win_col), _c_col_width);
         }
     }
 
     _s_vector.resize(_n);
-    win_col += _col_spacing + _vector_spacing + _col_spacing + _pad + _s_col_width + 1;
+    win_col += _col_spacing + _vector_spacing + _col_spacing
+        + _pad + _s_col_width + 1;
     for (size_t i = 0; i < _n; i++)
-        _s_vector[i] = MatrixEntry(_win, Cursor(i+_header_rows, win_col), _s_col_width);
+    {
+        _s_vector[i] =
+            MatrixEntry(_win, Cursor(i+_header_rows, win_col), _s_col_width);
+    }
 
     _v_vector.resize(_n);
-    win_col += _col_spacing + _vector_spacing + _col_spacing + _pad + _v_col_width + 1;
+    win_col += _col_spacing + _vector_spacing + _col_spacing
+        + _pad + _v_col_width + 1;
     for (size_t i = 0; i < _n; i++)
-        _v_vector[i] = MatrixEntry(_win, Cursor(i+_header_rows, win_col), _v_col_width);
+    {
+        _v_vector[i] =
+            MatrixEntry(_win, Cursor(i+_header_rows, win_col), _v_col_width);
+    }
 }
 #endif
 
@@ -2093,11 +2106,12 @@ MatrixPane::MatrixPane(const MatrixPane& rhs)
     _c_matrix(rhs._c_matrix), _s_vector(rhs._s_vector), _v_vector(rhs._v_vector),
     _text_panes(rhs._text_panes), _mpp(rhs._mpp), _mp(rhs._mp), _mtp(rhs._mtp),
     _n(rhs._n), _c_i(rhs._c_i), _c_j(rhs._c_j), _s_i(rhs._s_i), _v_i(rhs._v_i),
-    _t_i(rhs._t_i), _e_i(rhs._e_i),
-    _c_col_width(rhs._c_col_width), _s_col_width(rhs._s_col_width), _v_col_width(rhs._v_col_width),
-    _pad(rhs._pad), _col_spacing(rhs._col_spacing), _vector_spacing(rhs._vector_spacing),
-    _header_rows(rhs._header_rows),
-    _valid_screen_chars(rhs._valid_screen_chars), _key_mode_actions(rhs._key_mode_actions)
+    _t_i(rhs._t_i), _e_i(rhs._e_i), _c_col_width(rhs._c_col_width),
+    _s_col_width(rhs._s_col_width), _v_col_width(rhs._v_col_width),
+    _pad(rhs._pad), _col_spacing(rhs._col_spacing),
+    _vector_spacing(rhs._vector_spacing), _header_rows(rhs._header_rows),
+    _valid_screen_chars(rhs._valid_screen_chars),
+    _key_mode_actions(rhs._key_mode_actions)
 {
 }
 
@@ -2219,7 +2233,9 @@ void MatrixPane::draw(void)
 
     wmove(_win, _win_start.row(), 0);
     wattr_on(_win, A_BOLD, NULL);
-    wprintw(_win, "[ Coefficient Matrix ]-1 x [ Constants Vector ] = [ Unknowns Vector ]\n");
+    wprintw(_win,
+            "[ Coefficient Matrix ]-1 x [ Constants Vector ] "
+            "= [ Unknowns Vector ]\n");
     wattr_off(_win, A_BOLD, NULL);
 
     for (size_t i = 0; i < _n; i++)
@@ -2702,7 +2718,8 @@ void MatrixPane::solve(void)
             {
                 ostringstream oss;
 
-                oss << "Entry [" << i+1 << "][" << j+1 << "] in the coefficient matrix is empty";
+                oss << "Entry [" << i+1 << "][" << j+1
+                    << "] in the coefficient matrix is empty";
                 _me->error(oss.str());
                 cancel(K_ESCAPE);
 
@@ -2744,14 +2761,18 @@ void MatrixPane::solve(void)
         for (i = 0; i < _n; i++)
         {
             for (j = 0; j < _n; j++)
-                A(i+1,j+1) = Number<Scientific>::parse_expression(_c_matrix[i][j].data());
+            {
+                A(i+1,j+1) =
+                    Number<Scientific>::parse_expression(_c_matrix[i][j].data());
+            }
         }
     }
     catch (NumberParsingException<Scientific>& e)
     {
         ostringstream oss;
 
-        oss << "Error with expression in entry [" << i+1 << "][" << j+1 << "] of the coefficient matrix:\n";
+        oss << "Error with expression in entry [" << i+1 << "]["
+            << j+1 << "] of the coefficient matrix:\n";
         oss << "  " << e.str() << "\n";
         oss << "  " << setw(e.index()+1) << "^";
 
@@ -2778,7 +2799,8 @@ void MatrixPane::solve(void)
     {
         ostringstream oss;
 
-        oss << "Error with expression in entry [" << i+1 << "] of the solution vector:\n";
+        oss << "Error with expression in entry [" << i+1
+            << "] of the solution vector:\n";
         oss << "  " << e.str() << "\n";
         oss << "  " << setw(e.index()+1) << "^";
 
@@ -2816,7 +2838,6 @@ void MatrixPane::solve(void)
     try
     {
         v = A.solve(s);
-
     }
     catch (MatrixSingularException<Scientific>& e)
     {
@@ -3033,7 +3054,8 @@ EvalPane::EvalPane(MatrixEditor* me, WINDOW* w)
     _e_entry = EvalEntry(_win, c);
 }
 
-EvalPane::EvalPane(MatrixEditor* me, WINDOW* w, const Cursor& start, const Cursor& end)
+EvalPane::EvalPane(MatrixEditor* me, WINDOW* w,
+        const Cursor& start, const Cursor& end)
     : WindowPane(me, w, start, end), _win_offset(2)
 {
     Cursor c(_win_start);
@@ -3611,7 +3633,8 @@ void MatrixEditor::resize_windows(void)
     }
 
     // int wresize(window, lines, columns) OK or ERR
-    // bool is_term_resized(lines, columns) TRUE or FALSE  checks if resize_term would modify window structures
+    // bool is_term_resized(lines, columns) TRUE or FALSE
+    //   checks if resize_term would modify window structures
     // int resize_term(lines, columns) OK or ERR
     // int resizeterm(lines, columns) OK or ERR  adds bookkeeping for SIGWINCH??
     
@@ -4033,7 +4056,8 @@ void MatrixEditor::color(const vector<string>& args)
 
     (void)_current_editor_window->color().pair(&fg, &bg);
 
-    wprintw(w, "Use left/right arrows to change foreground and up/down to change background ");
+    wprintw(w, "Use left/right arrows to change foreground "
+            "and up/down to change background ");
 
     while ((ch = wgetch(w)) != 0)
     {
