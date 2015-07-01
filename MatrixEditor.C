@@ -1325,6 +1325,7 @@ void WindowPane::line_begin(int ch)
     WindowEntry& e(entry());
 
     e.mbegin();
+
     _cur_col = e.cursor().col();
 }
 
@@ -1399,7 +1400,11 @@ void WindowPane::visual_move(int ch)
 
 void WindowPane::visual_left(int ch)
 {
-    entry().vmove(-1);
+    WindowEntry& e(entry());
+
+    e.vmove(-1);
+
+    _cur_col = e.cursor().col();
 }
 
 void WindowPane::visual_right(int ch)
@@ -1411,6 +1416,8 @@ void WindowPane::visual_right(int ch)
         return;
 
     e.vmove(1);
+
+    _cur_col = e.cursor().col();
 }
 
 void WindowPane::visual_up(int ch)
@@ -1423,22 +1430,38 @@ void WindowPane::visual_down(int ch)
 
 void WindowPane::visual_line_begin(int ch)
 {
-    entry().vmbegin();
+    WindowEntry& e(entry());
+
+    e.vmbegin();
+
+    _cur_col = e.cursor().col();
 }
 
 void WindowPane::visual_line_end(int ch)
 {
-    entry().vmend();
+    WindowEntry& e(entry());
+
+    e.vmend();
+
+    _cur_col = e.cursor().col();
 }
 
 void WindowPane::visual_pane_begin(int ch)
 {
-    entry().vmbegin();
+    WindowEntry& e(entry());
+
+    e.vmbegin();
+
+    _cur_col = e.cursor().col();
 }
 
 void WindowPane::visual_pane_end(int ch)
 {
-    entry().vmend();
+    WindowEntry& e(entry());
+
+    e.vmend();
+
+    _cur_col = e.cursor().col();
 }
 
 void WindowPane::visual_remove(int ch)
@@ -1450,11 +1473,15 @@ void WindowPane::visual_remove(int ch)
     if (e.position() == (int)e.size())
         e << 1;
 
+    _cur_col = e.cursor().col();
+
     visual_cancel(ch);
 }
 
 void WindowPane::visual_replace(int ch)
 {
+    WindowEntry& e(entry());
+
     while ((ch = wgetch(_win)) != 0)
     {
         if (ch == -1)
@@ -1465,10 +1492,12 @@ void WindowPane::visual_replace(int ch)
 
         if (is_print(ch))
         {
-            entry().vreplace(ch);
+            e.vreplace(ch);
             break;
         }
     }
+
+    _cur_col = e.cursor().col();
 
     visual_cancel(ch);
 }
@@ -1483,6 +1512,8 @@ void WindowPane::visual_clear(int ch)
     _me->yanked(e.data());
 
     e.clear();
+
+    _cur_col = e.cursor().col();
 
     visual_cancel(ch);
 }
@@ -1504,14 +1535,22 @@ void WindowPane::visual_paste(int ch)
     if (_me->yanked().empty())
         return;
 
-    entry().vreplace(_me->yanked());
+    WindowEntry& e(entry());
+
+    e.vreplace(_me->yanked());
+
+    _cur_col = e.cursor().col();
 
     visual_cancel(ch);
 }
 
 void WindowPane::visual_toggle(int ch)
 {
-    entry().vtoggle();
+    WindowEntry& e(entry());
+
+    e.vtoggle();
+
+    _cur_col = e.cursor().col();
 }
 
 void WindowPane::replace(int ch)
@@ -1530,6 +1569,8 @@ void WindowPane::replace(int ch)
     }
 
     e >> 1;
+
+    _cur_col = e.cursor().col();
 }
 
 void WindowPane::replace_move(int ch)
@@ -1562,6 +1603,8 @@ void WindowPane::replace_move(int ch)
             _replaced.clear();
             break;
     }
+
+    _cur_col = e.cursor().col();
 }
 
 void WindowPane::replace_one(int ch)
