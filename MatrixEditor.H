@@ -154,17 +154,17 @@ class WindowEntry
         virtual void vreplace(const string& s);
         virtual void vclear(void);
 
-        virtual string data(void);
-        virtual string pdata(void);
-        virtual string vdata(void);
+        virtual string data(void) const;
+        virtual string pdata(void) const;
+        virtual string vdata(void) const;
 
-        virtual int position(void);
-        virtual size_t length(void);
-        virtual size_t size(void);
-        virtual bool empty(void);
+        virtual int position(void) const;
+        virtual size_t length(void) const;
+        virtual size_t size(void) const;
+        virtual bool empty(void) const;
         virtual Cursor& cursor(void);
 
-        virtual size_t width(void);
+        virtual size_t width(void) const;
         virtual void width(size_t w);
 
         virtual string info(void);
@@ -186,6 +186,9 @@ class WindowEntry
         virtual void get_attrs(int ch, AttrColor& ac);
         void default_attrs(AttrColor& ac) { _default_attrs = ac; }
         const AttrColor& default_attrs(void) { return _default_attrs; }
+
+        virtual void write(ostream& os) const;
+        virtual void read(istream& is);
 
     protected:
         string _data;
@@ -247,18 +250,21 @@ class HeaderEntry : public WindowEntry
         //virtual void vreplace(const string& s);
         //virtual void vclear(void);
 
-        //virtual string data(void);
-        //virtual string pdata(void);
-        //virtual string vdata(void);
+        //virtual string data(void) const;
+        //virtual string pdata(void) const;
+        //virtual string vdata(void) const;
 
-        //virtual int position(void);
-        //virtual size_t length(void);
-        //virtual size_t size(void);
-        //virtual bool empty(void);
+        //virtual int position(void) const;
+        //virtual size_t length(void) const;
+        //virtual size_t size(void) const;
+        //virtual bool empty(void) const;
         //virtual Cursor& cursor(void);
 
         virtual string info(void);
         virtual void get_attrs(int ch, AttrColor& ac);
+
+        //virtual void write(ostream& os) const;
+        //virtual void read(ostream& is);
 
     private:
 };
@@ -314,18 +320,21 @@ class EvalEntry : public WindowEntry
         //virtual void vreplace(const string& s);
         //virtual void vclear(void);
 
-        //virtual string data(void);
-        //virtual string pdata(void);
-        //virtual string vdata(void);
+        //virtual string data(void) const;
+        //virtual string pdata(void) const;
+        //virtual string vdata(void) const;
 
-        //virtual int position(void);
-        //virtual size_t length(void);
-        //virtual size_t size(void);
-        //virtual bool empty(void);
+        //virtual int position(void) const;
+        //virtual size_t length(void) const;
+        //virtual size_t size(void) const;
+        //virtual bool empty(void) const;
         //virtual Cursor& cursor(void);
 
         virtual string info(void);
         virtual void get_attrs(int ch, AttrColor& ac);
+
+        //virtual void write(ostream& os) const;
+        //virtual void read(ostream& is);
 
     private:
 };
@@ -391,21 +400,24 @@ class MatrixEntry : public WindowEntry
         //virtual void vreplace(const string& s);
         //virtual void vclear(void);
 
-        //virtual string data(void);
-        //virtual string pdata(void);
-        //virtual string vdata(void);
+        //virtual string data(void) const;
+        //virtual string pdata(void) const;
+        //virtual string vdata(void) const;
 
-        //virtual int position(void);
-        //virtual size_t length(void);
-        //virtual size_t size(void);
-        //virtual bool empty(void);
+        //virtual int position(void) const;
+        //virtual size_t length(void) const;
+        //virtual size_t size(void) const;
+        //virtual bool empty(void) const;
         //virtual Cursor& cursor(void);
 
         virtual string info(void);
         virtual void get_attrs(int ch, AttrColor& ac);
 
-        size_t width(void);
-        void width(size_t w);
+        //virtual void write(ostream& os) const;
+        //virtual void read(ostream& is);
+
+        virtual size_t width(void) const;
+        virtual void width(size_t w);
 
     private:
         size_t _width;
@@ -511,6 +523,10 @@ class WindowPane
         ColorPair& color(void);
 
         virtual void update_color(short fg, short bg);
+
+        virtual void write(ostream& os) const;
+        virtual void read(istream& is);
+        virtual bool empty(void) const;
 
     protected:
         MatrixEditor* _me;
@@ -912,7 +928,11 @@ class TextPane : public WindowPane
 {
     public:
         TextPane(MatrixEditor* me, WINDOW* w);
-        TextPane(MatrixEditor* me, WINDOW* w, const Cursor& start, const Cursor& end);
+        TextPane(MatrixEditor* me, WINDOW* w, vector<string> lines);
+        TextPane(MatrixEditor* me, WINDOW* w,
+                const Cursor& start, const Cursor& end);
+        TextPane(MatrixEditor* me, WINDOW* w, vector<string> lines,
+                const Cursor& start, const Cursor& end);
         TextPane(const TextPane& rhs);
         TextPane& operator=(const TextPane& rhs);
         WindowEntry& operator[](size_t row);
@@ -992,6 +1012,10 @@ class TextPane : public WindowPane
         //virtual void no_op(int ch) {}
 
         //virtual void update_color(short fg, short bg);
+
+        virtual void read(istream& is);
+        virtual void write(ostream& os) const;
+        virtual bool empty(void) const;
 
     private:
         vector<WindowEntry> _lines;
@@ -1471,6 +1495,10 @@ class MatrixPane : public WindowPane
 
         void solve(void);
 
+        virtual void read(istream& is);
+        virtual void write(ostream& os) const;
+        virtual bool empty(void) const;
+
         enum MatrixPart
         {
             MP_COEFFICIENT,
@@ -1498,7 +1526,7 @@ class MatrixPane : public WindowPane
         MatrixPanePart _mpp;
         MatrixPart _mp;
         MatrixTextPart _mtp;
-        size_t _n, _c_i, _c_j, _s_i, _v_i, _t_i, _e_i;
+        size_t _n, _c_i, _c_j, _s_i, _v_i;
         size_t _c_col_width, _s_col_width, _v_col_width;
         size_t _pad = 1;
         size_t _col_spacing = 1;
@@ -2009,6 +2037,10 @@ class EvalPane : public WindowPane
 
         void solve(void);
 
+        //virtual void read(istream& is);
+        //virtual void write(ostream& os) const;
+        //virtual bool empty(void) const;
+
     private:
         int _win_offset;
         EvalEntry _e_entry;
@@ -2421,6 +2453,7 @@ class MatrixEditor
         void fini(void);
         void loop(void);
         void error(string e);
+        void info(string e);
         void set_mode(EditorMode mode);
         EditorMode mode(void);
 
@@ -2431,7 +2464,7 @@ class MatrixEditor
         void resize_windows(void);
 
         static void sig_quit(int sig);
-        void quit(void);
+        void quit(int sig);
 
     protected:
         void process_command(int ch);
@@ -2445,6 +2478,8 @@ class MatrixEditor
         void eval_pane(const vector<string>& args);
         void new_pane(const vector<string>& args);
         void redraw(const vector<string>& args);
+        void write(const vector<string>& args);
+        void open(const vector<string>& args);
 
         bool init_signals(void);
         bool init_ncurses(void);
@@ -2507,10 +2542,18 @@ class MatrixEditor
             { "bn", &MatrixEditor::next_pane },
             { "color", &MatrixEditor::color },
             { "m", &MatrixEditor::matrix_pane },
-            { "e", &MatrixEditor::eval_pane },
+            { "x", &MatrixEditor::eval_pane },
             { "n", &MatrixEditor::new_pane },
             { "r", &MatrixEditor::redraw },
+            { "w", &MatrixEditor::write },
+            { "e", &MatrixEditor::open },
         };
 };
+
+ostream& operator<<(ostream& os, const WindowEntry& rhs);
+istream& operator>>(istream& is, WindowEntry& rhs);
+
+ostream& operator<<(ostream& os, const WindowPane& rhs);
+istream& operator>>(istream& is, WindowPane& rhs);
 
 #endif

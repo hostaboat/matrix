@@ -9,7 +9,10 @@
 #include <string>
 #include <map>
 #include <csignal>
+#include <fstream>
 using namespace std;
+
+static const string g_default_file = "linear_circuits.txt";
 
 vector<int> ColorPair::color_pairs(50, 0);
 
@@ -496,17 +499,17 @@ void WindowEntry::vclear(void)
     clear();
 }
 
-string WindowEntry::data(void)
+string WindowEntry::data(void) const
 {
     return _data;
 }
 
-string WindowEntry::pdata(void)
+string WindowEntry::pdata(void) const
 {
     return _data.substr(_pos);
 }
 
-string WindowEntry::vdata(void)
+string WindowEntry::vdata(void) const
 {
     string s;
 
@@ -524,22 +527,22 @@ string WindowEntry::vdata(void)
     return s;
 }
 
-int WindowEntry::position(void)
+int WindowEntry::position(void) const
 {
     return _pos;
 }
 
-size_t WindowEntry::length(void)
+size_t WindowEntry::length(void) const
 {
     return _data.size();
 }
 
-size_t WindowEntry::size(void)
+size_t WindowEntry::size(void) const
 {
     return _data.size();
 }
 
-bool WindowEntry::empty(void)
+bool WindowEntry::empty(void) const
 {
     return _data.size() == 0;
 }
@@ -549,7 +552,7 @@ Cursor& WindowEntry::cursor(void)
     return _win_pos;
 }
 
-size_t WindowEntry::width(void)
+size_t WindowEntry::width(void) const
 {
     return _data.size();
 }
@@ -577,6 +580,28 @@ string WindowEntry::info(void)
         + ", width: " + to_string(_data.size())
         + "\n  Data: " + _data;
     return s;
+}
+
+void WindowEntry::read(istream& is)
+{
+    is >> _data;
+}
+
+istream& operator>>(istream& is, WindowEntry& rhs)
+{
+    rhs.read(is);
+    return is;
+}
+
+void WindowEntry::write(ostream& os) const
+{
+    os << _data;
+}
+
+ostream& operator<<(ostream& os, const WindowEntry& rhs)
+{
+    rhs.write(os);
+    return os;
 }
 
 HeaderEntry::HeaderEntry(void)
@@ -746,6 +771,7 @@ MatrixEntry::MatrixEntry(WINDOW* w, const Cursor& c,
     else
         _width = _data.size();
 
+    _pos = _data.size();
     _win_pos >> (_width + 2);
     //_win_pos >> 2;
 }
@@ -759,6 +785,7 @@ MatrixEntry::MatrixEntry(WINDOW* w, const Cursor& c,
     else if (_width < _data.size())
         _width = _data.size();
 
+    _pos = _data.size();
     _win_pos >> (_width + 2);
     //_win_pos >> ((_width - _data.size()) + 2);
 }
@@ -873,7 +900,7 @@ void MatrixEntry::remove(void)
     remove(1);
 }
 
-size_t MatrixEntry::width(void)
+size_t MatrixEntry::width(void) const
 {
     return _width;
 }
@@ -1562,6 +1589,31 @@ void WindowPane::update_color(short fg, short bg)
     redraw();
 }
 
+void WindowPane::write(ostream& os) const
+{
+}
+
+void WindowPane::read(istream& is)
+{
+}
+
+bool WindowPane::empty(void) const
+{
+    return true;
+}
+
+istream& operator>>(istream& is, WindowPane& rhs)
+{
+    rhs.read(is);
+    return is;
+}
+
+ostream& operator<<(ostream& os, const WindowPane& rhs)
+{
+    rhs.write(os);
+    return os;
+}
+
 WINDOW* WindowPane::window(void)
 {
     return _win;
@@ -1582,11 +1634,36 @@ TextPane::TextPane(MatrixEditor* me, WINDOW* w)
     _tilde_fill = ColorPair(COLOR_BLUE, _color_pair.bg());
 }
 
+TextPane::TextPane(MatrixEditor* me, WINDOW* w, vector<string> lines)
+    : WindowPane(me, w), _lines(0), _cur_line(0)
+{
+    for (size_t i = 0; i < lines.size(); i++)
+        (*this)[i] = lines[i];
+
+    if (_lines.empty())
+        _lines.push_back(WindowEntry(_win, _win_start));
+
+    _tilde_fill = ColorPair(COLOR_BLUE, _color_pair.bg());
+}
+
 TextPane::TextPane(MatrixEditor* me, WINDOW* w,
         const Cursor& start, const Cursor& end)
     : WindowPane(me, w, start, end), _lines(0), _cur_line(0)
 {
     _lines.push_back(WindowEntry(_win, _win_start));
+    _tilde_fill = ColorPair(COLOR_BLUE, _color_pair.bg());
+}
+
+TextPane::TextPane(MatrixEditor* me, WINDOW* w, vector<string> lines,
+        const Cursor& start, const Cursor& end)
+    : WindowPane(me, w, start, end), _lines(0), _cur_line(0)
+{
+    for (size_t i = 0; i < lines.size(); i++)
+        (*this)[i] = lines[i];
+
+    if (_lines.empty())
+        _lines.push_back(WindowEntry(_win, _win_start));
+
     _tilde_fill = ColorPair(COLOR_BLUE, _color_pair.bg());
 }
 
@@ -1612,9 +1689,12 @@ TextPane& TextPane::operator=(const TextPane& rhs)
 
 WindowEntry& TextPane::operator[](size_t row)
 {
+    if (_lines.empty())
+        _lines.push_back(WindowEntry(_win, _win_start));
+
     if (row >= _lines.size())
     {
-        size_t new_rows = row - (_lines.size() - 1);
+        int new_rows = (int)row - ((int)_lines.size() - 1);
 
         for (size_t i = 0; i < new_rows; i++)
             insert_line('o');
@@ -1975,13 +2055,45 @@ void TextPane::pane_end(int ch)
     line_end(ch);
 }
 
+void TextPane::write(ostream& os) const
+{
+    if (empty())
+        return;
+
+    for (size_t i = 0; i < _lines.size(); i++)
+        os << _lines[i] << '\n';
+}
+
+void TextPane::read(istream& is)
+{
+    static char buffer[1024];
+
+    _lines.clear();
+
+    size_t i = 0;
+    while (is.getline(buffer, sizeof(buffer)))
+        (*this)[i++] = string(buffer);
+}
+
+bool TextPane::empty(void) const
+{
+    size_t i;
+    for (i = 0; i < _lines.size(); i++)
+    {
+        if (!_lines[i].empty())
+            break;
+    }
+
+    return i == _lines.size();
+}
+
 //******************************************************************************
 //* MatrixPane *****************************************************************
 //******************************************************************************
 MatrixPane::MatrixPane(size_t n, MatrixEditor* me, WINDOW* w)
     : WindowPane(me, w), _mpp(MPP_MATRIX), _mp(MP_COEFFICIENT), _mtp(MTP_TEXT),
-      _n(n), _c_i(0), _c_j(0), _s_i(0), _v_i(0), _t_i(0), _e_i(0),
-      _c_col_width(10), _s_col_width(3), _v_col_width(3)
+      _n(n), _c_i(0), _c_j(0), _s_i(0), _v_i(0),
+      _c_col_width(10), _s_col_width(6), _v_col_width(6)
 {
     _init();
 }
@@ -1990,8 +2102,8 @@ MatrixPane::MatrixPane(size_t n, MatrixEditor* me, WINDOW* w,
         const Cursor& start, const Cursor& end)
     : WindowPane(me, w, start, end), _mpp(MPP_MATRIX),
       _mp(MP_COEFFICIENT), _mtp(MTP_TEXT),
-      _n(n), _c_i(0), _c_j(0), _s_i(0), _v_i(0), _t_i(0), _e_i(0),
-      _c_col_width(10), _s_col_width(3), _v_col_width(3)
+      _n(n), _c_i(0), _c_j(0), _s_i(0), _v_i(0),
+      _c_col_width(10), _s_col_width(6), _v_col_width(6)
 {
     _init();
 }
@@ -2106,9 +2218,8 @@ MatrixPane::MatrixPane(const MatrixPane& rhs)
     _c_matrix(rhs._c_matrix), _s_vector(rhs._s_vector), _v_vector(rhs._v_vector),
     _text_panes(rhs._text_panes), _mpp(rhs._mpp), _mp(rhs._mp), _mtp(rhs._mtp),
     _n(rhs._n), _c_i(rhs._c_i), _c_j(rhs._c_j), _s_i(rhs._s_i), _v_i(rhs._v_i),
-    _t_i(rhs._t_i), _e_i(rhs._e_i), _c_col_width(rhs._c_col_width),
-    _s_col_width(rhs._s_col_width), _v_col_width(rhs._v_col_width),
-    _pad(rhs._pad), _col_spacing(rhs._col_spacing),
+    _c_col_width(rhs._c_col_width), _s_col_width(rhs._s_col_width),
+    _v_col_width(rhs._v_col_width), _pad(rhs._pad), _col_spacing(rhs._col_spacing),
     _vector_spacing(rhs._vector_spacing), _header_rows(rhs._header_rows),
     _valid_screen_chars(rhs._valid_screen_chars),
     _key_mode_actions(rhs._key_mode_actions)
@@ -2137,8 +2248,6 @@ MatrixPane& MatrixPane::operator=(const MatrixPane& rhs)
     _c_j = rhs._c_j;
     _s_i = rhs._s_i;
     _v_i = rhs._v_i;
-    _t_i = rhs._t_i;
-    _e_i = rhs._e_i;
 
     _c_col_width = rhs._c_col_width;
     _s_col_width = rhs._s_col_width;
@@ -2163,9 +2272,7 @@ void MatrixPane::key_action(int ch, EditorMode m)
 {
     if ((_mpp != MPP_MATRIX) && (ch != ''))
     {
-        //_text_panes[_mtp].key_action(ch, m);
-        auto it = _text_panes.find(_mtp);
-        it->second.key_action(ch, m);
+        _text_panes.find(_mtp)->second.key_action(ch, m);
     }
     else
     {
@@ -2297,8 +2404,7 @@ void MatrixPane::draw(void)
 
     //wclrtobot(_win);
 
-    auto it = _text_panes.find(_mtp);
-    it->second.draw();
+    _text_panes.find(_mtp)->second.draw();
 
     curs_set(old_curs);
     wmove(_win, y, x);
@@ -2439,8 +2545,7 @@ void MatrixPane::refresh(void)
     }
     else
     {
-        auto it = _text_panes.find(_mtp);
-        it->second.set();
+        _text_panes.find(_mtp)->second.set();
     }
 
     wrefresh(_win);
@@ -2935,9 +3040,7 @@ void MatrixPane::solve(void)
     size_t pos;
 
     _mtp = MTP_MATRIX_DATA;
-    //TextPane& mdata(_text_panes[_mtp]);
-    auto it = _text_panes.find(_mtp);
-    TextPane& mdata(it->second);
+    TextPane& mdata(_text_panes.find(_mtp)->second);
 
     mdata.clear_all('C');
     curs_row = 0;
@@ -3044,6 +3147,236 @@ void MatrixPane::solve(void)
     set();
     curs_set(old_curs);
     cancel(K_ESCAPE);
+}
+
+bool MatrixPane::empty(void) const
+{
+    for (size_t i = 0; i < _n; i++)
+    {
+        for (size_t j = 0; j < _n; j++)
+        {
+            if (!_c_matrix[i][j].empty())
+                return false;
+        }
+
+        if (!_s_vector[i].empty())
+            return false;
+
+        if (!_v_vector[i].empty())
+            return false;
+    }
+
+    return _text_panes.find(MTP_TEXT)->second.empty();
+}
+
+void MatrixPane::write(ostream& os) const
+{
+    if (empty())
+        return;
+
+    os << "[";
+    for (size_t i = 0; i < _n; i++)
+    {
+        os << "[";
+        for (size_t j = 0; j < _n; j++)
+        {
+            os << _c_matrix[i][j];
+            if (j < (_n - 1))
+                os << ",";
+        }
+        os << "]";
+    }
+    os << "]";
+
+    os << "[";
+    for (size_t i = 0; i < _n; i++)
+        os << "[" << _s_vector[i] << "]";
+    os << "]";
+
+    os << "[";
+    for (size_t i = 0; i < _n; i++)
+        os << "[" << _v_vector[i] << "]";
+    os << "]";
+
+    os << "\n";
+
+    os << _text_panes.find(MTP_TEXT)->second;
+
+    os << '' << '\n';  // End of transmission block character 0x17
+}
+
+void MatrixPane::read(istream& is)
+{
+    static char buffer[1024];
+
+    MatrixPane np(*this);
+
+    is.getline(buffer, sizeof(buffer));
+    string s(buffer);
+
+    if (s.empty())
+        return;
+
+    size_t mstart = s.find("[[");
+    size_t mend = s.find("]]");
+
+    if (mstart == string::npos)
+        return;
+
+    size_t n = 1;
+    size_t pos;
+    string cm(s.substr(mstart, mend - mstart));
+    while ((pos = cm.find("][", mstart)) != string::npos)
+    {
+        n++;
+        mstart = pos + 2;
+    }
+
+    np._n = n;
+    np._c_i = np._c_j = np._s_i = np._v_i = 0;
+    np._mpp = MPP_MATRIX;
+    np._mp = MP_COEFFICIENT;
+    np._mtp = MTP_TEXT;
+
+    np._c_matrix.clear();
+    np._s_vector.clear();
+    np._v_vector.clear();
+
+    vector< vector<string> > c_matrix;
+    vector<string> s_vector;
+    vector<string> v_vector;
+
+    np._c_matrix.resize(n);
+    c_matrix.resize(n);
+    for (size_t i = 0; i < n; i++)
+        np._c_matrix[i].resize(n);
+
+    np._s_vector.resize(n);
+    np._v_vector.resize(n);
+
+    mstart = s.find("[[");
+    mend = s.find("]]");
+    size_t index = 0;
+    for (pos = mstart + 1; pos < mend + 1; pos++)
+    {
+        switch (s[pos])
+        {
+            case '[':
+                mstart = pos + 1;
+                break;
+            case ',':
+                c_matrix[index].push_back(s.substr(mstart, pos - mstart));
+                mstart = pos + 1;
+                break;
+            case ']':
+                c_matrix[index++].push_back(s.substr(mstart, pos - mstart));
+                break;
+        }
+    }
+
+    mstart = s.find("[[", ++pos);
+    mend = s.find("]]", pos);
+    for (pos = mstart + 1; pos < mend + 1; pos++)
+    {
+        switch (s[pos])
+        {
+            case '[':
+                mstart = pos + 1;
+                break;
+            case ']':
+                s_vector.push_back(s.substr(mstart, pos - mstart));
+                break;
+        }
+    }
+
+    mstart = s.find("[[", ++pos);
+    mend = s.find("]]", pos);
+    for (pos = mstart + 1; pos < mend + 1; pos++)
+    {
+        switch (s[pos])
+        {
+            case '[':
+                mstart = pos + 1;
+                break;
+            case ']':
+                v_vector.push_back(s.substr(mstart, pos - mstart));
+                break;
+        }
+    }
+
+    for (size_t i = 0; i < n; i++)
+    {
+        for (size_t j = 0; j < n; j++)
+        {
+            if (c_matrix[i][j].size() > np._c_col_width)
+                np._c_col_width = c_matrix[i][j].size();
+        }
+
+        if (s_vector[i].size() > np._s_col_width)
+            np._s_col_width = s_vector[i].size();
+
+        if (v_vector[i].size() > np._v_col_width)
+            np._v_col_width = v_vector[i].size();
+    }
+
+    size_t win_col, win_row = np._win_start.row();
+    for (size_t i = 0; i < n; i++)
+    {
+        win_col = 0;
+        for (size_t j = 0; j < n; j++)
+        {
+            MatrixEntry::MatrixEntryPosition mep;
+
+            //win_col = (j + 1) * (_col_spacing + _pad + _c_col_width) + j;
+            //win_col = j + _c_col_width;
+
+            if (j == 0)
+                mep = MatrixEntry::MEP_START;
+            else if (j < (n - 1))
+                mep = MatrixEntry::MEP_MIDDLE;
+            else
+                mep = MatrixEntry::MEP_END;
+
+            Cursor c(win_row + np._header_rows + i, win_col);
+            np._c_matrix[i][j] = MatrixEntry(np._win, c, np._c_col_width, c_matrix[i][j], mep);
+
+            win_col += np._c_matrix[i][j].width() + 3;
+        }
+    }
+
+    win_col += np._vector_spacing + 1;
+    for (size_t i = 0; i < n; i++)
+    {
+        Cursor c(win_row + np._header_rows + i, win_col);
+        np._s_vector[i] = MatrixEntry(np._win, c, np._s_col_width, s_vector[i]);
+    }
+
+    win_col += np._s_vector[0].width() + 3 + np._vector_spacing + 1;
+    for (size_t i = 0; i < n; i++)
+    {
+        Cursor c(win_row + np._header_rows + i, win_col);
+        np._v_vector[i] = MatrixEntry(np._win, c, np._v_col_width, v_vector[i]);
+    }
+
+    Cursor start_pane(win_row + np._header_rows + n + 1, 0);
+    Cursor end_pane(np._win_end.row() - 1, 0);
+
+    np._text_panes.erase(np._text_panes.find(MTP_TEXT));
+
+    vector<string> lines;
+    while (is.peek() != '')
+    {
+        is.getline(buffer, sizeof(buffer));
+        lines.push_back(string(buffer));
+    }
+
+    is.getline(buffer, sizeof(buffer));
+
+    np._text_panes.insert(
+            pair<MatrixTextPart, TextPane>(MTP_TEXT,
+                TextPane(np._me, np._win, lines, start_pane, end_pane)));
+
+    *this = np;
 }
 
 EvalPane::EvalPane(MatrixEditor* me, WINDOW* w)
@@ -3562,16 +3895,16 @@ void MatrixEditor::sig_winch(int sig)
 void MatrixEditor::sig_quit(int sig)
 {
     if (MatrixEditor::sig_handler != NULL)
-        MatrixEditor::sig_handler->quit();
+        MatrixEditor::sig_handler->quit(sig);
 }
 
-void MatrixEditor::quit(void)
+void MatrixEditor::quit(int sig)
 {
     if (!ncurses_initialized || (sig_handler != this))
         return;
 
     fini();
-    exit(0);
+    exit(sig);
 }
 
 bool MatrixEditor::window_too_small(void)
@@ -3795,6 +4128,20 @@ void MatrixEditor::error(string e)
     (void)wgetch(_error_window);
 
     wclear(_error_window);
+    wrefresh(_error_window);
+
+    curs_set(old_curs);
+}
+
+void MatrixEditor::info(string e)
+{
+    if (!_initialized)
+        return;
+
+    int old_curs = curs_set(0);
+
+    wclear(_error_window);
+    wprintw(_error_window, "%s", e.c_str());
     wrefresh(_error_window);
 
     curs_set(old_curs);
@@ -4236,5 +4583,64 @@ void MatrixEditor::new_pane(const vector<string>& args)
 void MatrixEditor::redraw(const vector<string>& args)
 {
     _current_editor_window->redraw();
+}
+
+void MatrixEditor::open(const vector<string>& args)
+{
+    string filename;
+
+    if (!args.empty())
+        filename = args[0];
+    else
+        filename = g_default_file;
+
+    ifstream ifs(filename);
+
+    if (!ifs.is_open())
+    {
+        error("Could not open file: \"" + filename + "\".");
+        return;
+    }
+
+    //info("Opening file: \"" + filename + "\".");
+
+    size_t next_pane = _matrix_panes.size();
+    MatrixPane mp(2, this, _matrix_pane_window);
+    while (ifs >> mp)
+        _matrix_panes.push_back(mp);
+
+    ifs.close();
+
+    if (next_pane < _matrix_panes.size())
+    {
+        _current_matrix_pane = next_pane;
+        _current_editor_window = &_matrix_panes[_current_matrix_pane];
+        _current_editor_window->redraw();
+    }
+}
+
+void MatrixEditor::write(const vector<string>& args)
+{
+    string filename;
+
+    if (!args.empty())
+        filename = args[0];
+    else
+        filename = g_default_file;
+
+    ofstream ofs(filename, ios_base::app);
+
+    if (!ofs.is_open())
+    {
+        error("Could not open file: \"" + filename + "\" to write to.");
+        return;
+    }
+
+    for (size_t i = 0; i < _matrix_panes.size(); i++)
+        ofs << _matrix_panes[i];
+
+    //info("Finished writing to file: \"" + filename + "\".");
+
+    ofs.close();
 }
 
