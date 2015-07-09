@@ -2976,80 +2976,80 @@ void MatrixPane::solve(void)
 
         set();
         curs_set(old_curs);
-
-        return;
     }
-
-    Matrix<Scientific> v;
-    try
+    else
     {
-        v = A.solve(s);
-    }
-    catch (MatrixSingularException<Scientific>& e)
-    {
-        ostringstream oss;
-
-        oss << "Coefficient matrix is singular";
-
-        _me->error(oss.str());
-        cancel(K_ESCAPE);
-
-        _mp = MP_COEFFICIENT;
-        _c_i = _c_j = 0;
-
-        set();
-        curs_set(old_curs);
-
-        return;
-    }
-
-    _last_A = A;
-    _last_s = s;
-    _last_v = v;
-
-    for (i = 0; i < _n; i++)
-    {
-        for (j = 0; j < _n; j++)
+        Matrix<Scientific> v;
+        try
         {
-            string s(_c_matrix[i][j].data());
+            v = A.solve(s);
+        }
+        catch (MatrixSingularException<Scientific>& e)
+        {
+            ostringstream oss;
+
+            oss << "Coefficient matrix is singular";
+
+            _me->error(oss.str());
+            cancel(K_ESCAPE);
+
+            _mp = MP_COEFFICIENT;
+            _c_i = _c_j = 0;
+
+            set();
+            curs_set(old_curs);
+
+            return;
+        }
+
+        _last_A = A;
+        _last_s = s;
+        _last_v = v;
+
+        for (i = 0; i < _n; i++)
+        {
+            for (j = 0; j < _n; j++)
+            {
+                string s(_c_matrix[i][j].data());
+
+                _history.push_back(s);
+                if (_history.size() == 100)
+                    _history.erase(_history.begin(), _history.begin() + 10);
+                _cur_hist_entry = _history.size() - 1;
+            }
+        }
+
+        for (i = 0; i < _n; i++)
+        {
+            string s(_s_vector[i].data());
 
             _history.push_back(s);
             if (_history.size() == 100)
                 _history.erase(_history.begin(), _history.begin() + 10);
             _cur_hist_entry = _history.size() - 1;
         }
+
+        bool need_adjust = false;
+
+        _mp = MP_UNKNOWNS;
+        _v_i = 0;
+
+        for (i = 0; i < _n; i++)
+        {
+            ostringstream oss;
+
+            oss << v(i+1,1);
+
+            _v_vector[i] = oss.str();
+            _v_vector[i] << 1;
+
+            if (adjust(_v_vector[i].width()))
+                need_adjust = true;
+        }
+
+        if (need_adjust)
+            draw();
     }
-
-    for (i = 0; i < _n; i++)
-    {
-        string s(_s_vector[i].data());
-
-        _history.push_back(s);
-        if (_history.size() == 100)
-            _history.erase(_history.begin(), _history.begin() + 10);
-        _cur_hist_entry = _history.size() - 1;
-    }
-
-    bool need_adjust = false;
-
-    _mp = MP_UNKNOWNS;
-    _v_i = 0;
-
-    for (i = 0; i < _n; i++)
-    {
-        ostringstream oss;
-
-        oss << v(i+1,1);
-
-        _v_vector[i] = oss.str();
-        _v_vector[i] << 1;
-
-        if (adjust(_v_vector[i].width()))
-            need_adjust = true;
-    }
-
-    if (need_adjust)
-        draw();
 
     int curs_row = _header_rows + _n + 1;
 
@@ -3069,6 +3069,8 @@ void MatrixPane::solve(void)
 
     if ((ch != 'y') && (ch != 'Y'))
     {
+        _text_panes.find(MTP_NOTES)->second.draw();
+
         set();
         cancel(K_ESCAPE);
 
@@ -4598,11 +4600,12 @@ void MatrixEditor::next_pane(const vector<string>& args)
 
 void MatrixEditor::panes(const vector<string>& args)
 {
-    string s("Loaded panes: (buffer # : database id)\n");
+    string s("Loaded panes: (buffer # : database id).  "
+            "Current buffer: #" + to_string(_current_matrix_pane) + "\n");
 
     for (size_t i = 0; i < _matrix_panes.size(); i++)
     {
-        s += to_string(i) + " : " + to_string(_matrix_panes[i].id());
+        s += to_string(i) + ":" + to_string(_matrix_panes[i].id());
         if (i < (_matrix_panes.size() - 1))
             s += ",  ";
     }
@@ -4883,24 +4886,26 @@ void MatrixEditor::write(const vector<string>& args)
 
         MatrixInfo mi = { 0, "", mp.dimension(), oss_matrix.str(), oss_notes.str() };
 
+        int inserted;
         if (mp.id() > 0)
         {
             mi.id = mp.id();
-            _mdb->update(mi);
+            inserted = _mdb->update(mi);
+            if (inserted > 0)
+                info(s + "\nSuccessfully updated matrix pane with database id:" + to_string(mi.id));
         }
         else
         {
-            if (_mdb->insert(mi) > 0)
+            inserted = _mdb->insert(mi);
+            if (inserted > 0)
             {
                 mp.id(mi.id);
-                info(s + "\nMatrix pane id:" + to_string(mi.id));
-            }
-            else
-            {
-                error("Failed to write entry to database.");
-                return;
+                info(s + "\nSuccessfully inserted matrix pane with database id:" + to_string(mi.id));
             }
         }
+
+        if (inserted <= 0)
+            error("Failed to write entry to database.");
     }
     catch (DatabaseException& e)
     {
