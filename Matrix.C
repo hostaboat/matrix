@@ -994,31 +994,31 @@ MatrixInvalidVectorException<T>::MatrixInvalidVectorException(
         const vector< vector< Number<T> > >& invalid_vector)
 {
     _invalid_vector1 = new vector< vector< Number<T> > >(invalid_vector);
-    _invalid_vector2 = NULL;
+    _invalid_vector2 = nullptr;
 }
 
 template<class T>
 MatrixInvalidVectorException<T>::MatrixInvalidVectorException(
         const vector< Number<T> >& invalid_vector)
 {
-    _invalid_vector1 = NULL;
+    _invalid_vector1 = nullptr;
     _invalid_vector2 = new vector< Number<T> >(invalid_vector);
 }
 
 template<class T>
 MatrixInvalidVectorException<T>::~MatrixInvalidVectorException(void)
 {
-    if (_invalid_vector1 != NULL)
+    if (_invalid_vector1 != nullptr)
         delete _invalid_vector1;
 
-    if (_invalid_vector2 != NULL)
+    if (_invalid_vector2 != nullptr)
         delete _invalid_vector2;
 }
 
 template<class T>
 void MatrixInvalidVectorException<T>::message(void) const
 {
-    if (_invalid_vector1 != NULL)
+    if (_invalid_vector1 != nullptr)
     {
         set<int> mismatches;
 
@@ -1036,7 +1036,7 @@ void MatrixInvalidVectorException<T>::message(void) const
 
         cout << endl;
     }
-    else if (_invalid_vector2 != NULL)
+    else if (_invalid_vector2 != nullptr)
     {
         cout << "Invalid vector of size " << _invalid_vector2->size()
             << " cannot be used to create a matrix." << endl;
