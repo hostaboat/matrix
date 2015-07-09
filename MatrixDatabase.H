@@ -226,8 +226,13 @@ class Statement
             swap(lhs._result_funcs, rhs._result_funcs);
             swap(lhs._num_cols, rhs._num_cols);
 
+            auto s(lhs._col_names);
+
             for (size_t i = 0; i < sizeof...(Tps); i++)
                 lhs._col_names[i] = rhs._col_names[i];
+
+            for (size_t i = 0; i < sizeof...(Tps); i++)
+                rhs._col_names[i] = s[i];
         }
 
         Statement(Statement&& rhs)
@@ -565,7 +570,7 @@ class MatrixDatabase
 
         enum PreparedStatement
         {
-            PS_ENTRIES,
+            PS_ENTRIES = 0,
             PS_ENTRY,
             PS_QUERY,
             PS_INSERT,
