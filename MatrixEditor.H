@@ -2,6 +2,7 @@
 #define _MATRIX_EDITOR_H
 
 #include <Matrix.H>
+#include <MatrixDatabase.H>
 #include <ncurses.h>
 #include <list>
 #include <vector>
@@ -1499,6 +1500,14 @@ class MatrixPane : public WindowPane
         virtual void write(ostream& os) const;
         virtual bool empty(void) const;
 
+        void read_matrix(string s);
+        void read_notes(const vector<string>& lines);
+        void write_matrix(ostream& os) const;
+        void write_notes(ostream& os) const;
+        void id(int id) { _database_id = id; }
+        int id(void) { return _database_id; }
+        size_t dimension(void) { return _n; }
+
         enum MatrixPart
         {
             MP_COEFFICIENT,
@@ -1509,7 +1518,7 @@ class MatrixPane : public WindowPane
         enum MatrixTextPart
         {
             MTP_MATRIX_DATA,
-            MTP_TEXT,
+            MTP_NOTES,
         };
 
         enum MatrixPanePart
@@ -1533,6 +1542,7 @@ class MatrixPane : public WindowPane
         size_t _vector_spacing = 3;
         size_t _header_rows = 2;
         Matrix<Scientific> _last_A, _last_s, _last_v;
+        int _database_id;
 
         vector<int> _valid_screen_chars = {
             '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.',
@@ -2468,9 +2478,12 @@ class MatrixEditor
 
     protected:
         void process_command(int ch);
+        void process_search(int ch);
         void execute_command(const string& s);
         void prev_pane(const vector<string>& args);
         void next_pane(const vector<string>& args);
+        void panes(const vector<string>& args);
+        void set_pane(const vector<string>& args);
         void quit_all(const vector<string>& args);
         void quit(const vector<string>& args);
         void color(const vector<string>& args);
@@ -2478,8 +2491,13 @@ class MatrixEditor
         void eval_pane(const vector<string>& args);
         void new_pane(const vector<string>& args);
         void redraw(const vector<string>& args);
-        void write(const vector<string>& args);
         void open(const vector<string>& args);
+        void write(const vector<string>& args);
+        void remove(const vector<string>& args);
+        void write_all(const vector<string>& args);
+        void write_quit(const vector<string>& args);
+        void write_quit_all(const vector<string>& args);
+        void search(const string& s);
 
         bool init_signals(void);
         bool init_ncurses(void);
@@ -2519,8 +2537,15 @@ class MatrixEditor
         string _yanked;
 
         vector<string> _command_history;
+        vector<string> _search_history;
 
         bool _exit_loop;
+
+        MatrixDatabase* _mdb;
+        string _file_name;
+        string _db_name;
+        const string _default_db = "matrix_panes.db";
+        const string _default_file = "matrix_panes.txt";
 
         const int mpwhh = 1;
         const int epwhh = 1;
@@ -2531,22 +2556,28 @@ class MatrixEditor
         const int mpw_minw = 80;
 
         const int _cmd_char = ':';
+        const int _search_char = '/';
 
         typedef void (MatrixEditor::*CommandAction)(const vector<string>& args);
 #define MEC_CALL(object, member_func)   ((object).*(member_func))
         map<string, CommandAction> _command_actions = {
-
             { "q", &MatrixEditor::quit },
             { "qa", &MatrixEditor::quit_all },
             { "bp", &MatrixEditor::prev_pane },
             { "bn", &MatrixEditor::next_pane },
+            { "buffers", &MatrixEditor::panes },
+            { "b", &MatrixEditor::set_pane },
             { "color", &MatrixEditor::color },
             { "m", &MatrixEditor::matrix_pane },
             { "x", &MatrixEditor::eval_pane },
             { "n", &MatrixEditor::new_pane },
             { "r", &MatrixEditor::redraw },
             { "w", &MatrixEditor::write },
+            { "wa", &MatrixEditor::write_all },
             { "e", &MatrixEditor::open },
+            { "d", &MatrixEditor::remove },
+            { "wq", &MatrixEditor::write_quit },
+            { "wqa", &MatrixEditor::write_quit_all },
         };
 };
 

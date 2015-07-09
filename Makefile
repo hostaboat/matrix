@@ -1,8 +1,9 @@
 PROJ = Matrix
 CC = g++
-CFLAGS = -std=c++11 -Wall -I .
+CFLAGS = -std=c++11 -Wall -I . -I /usr/local/include
+LDFLAGS = -L /usr/local/lib
 DEBUGFLAGS = -g -O0
-LDLIBS = -lncurses
+LDLIBS = -lncurses -lsqlite3
 
 SOURCES = \
 Number.H \
@@ -15,6 +16,8 @@ Matrix.C \
 Matrix.H \
 MatrixEditor.C \
 MatrixEditor.H \
+MatrixDatabase.C \
+MatrixDatabase.H \
 Exceptions.H \
 Exceptions.C \
 main.C
@@ -23,6 +26,7 @@ OBJECTS = \
 Rational.o \
 Scientific.o \
 MatrixEditor.o \
+MatrixDatabase.o \
 Exceptions.o \
 main.o
 
@@ -32,7 +36,7 @@ debug: CFLAGS += $(DEBUGFLAGS)
 debug: $(PROJ)
 
 $(PROJ): $(OBJECTS) 
-	$(CC) $(CFLAGS) $(OBJECTS) $(LDLIBS) -o $(PROJ)
+	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJECTS) $(LDLIBS) -o $(PROJ)
 
 -include $(OBJECTS:.o=.d)
 

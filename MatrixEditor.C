@@ -10,9 +10,8 @@
 #include <map>
 #include <csignal>
 #include <fstream>
+#include <sqlite3.h>
 using namespace std;
-
-static const string g_default_file = "linear_circuits.txt";
 
 vector<int> ColorPair::color_pairs(50, 0);
 
@@ -1739,7 +1738,7 @@ WindowEntry& TextPane::operator[](size_t row)
     {
         int new_rows = (int)row - ((int)_lines.size() - 1);
 
-        for (size_t i = 0; i < new_rows; i++)
+        for (int i = 0; i < new_rows; i++)
             insert_line('o');
     }
 
@@ -2134,9 +2133,9 @@ bool TextPane::empty(void) const
 //* MatrixPane *****************************************************************
 //******************************************************************************
 MatrixPane::MatrixPane(size_t n, MatrixEditor* me, WINDOW* w)
-    : WindowPane(me, w), _mpp(MPP_MATRIX), _mp(MP_COEFFICIENT), _mtp(MTP_TEXT),
+    : WindowPane(me, w), _mpp(MPP_MATRIX), _mp(MP_COEFFICIENT), _mtp(MTP_NOTES),
       _n(n), _c_i(0), _c_j(0), _s_i(0), _v_i(0),
-      _c_col_width(10), _s_col_width(6), _v_col_width(6)
+      _c_col_width(10), _s_col_width(6), _v_col_width(6), _database_id(-1)
 {
     _init();
 }
@@ -2144,9 +2143,9 @@ MatrixPane::MatrixPane(size_t n, MatrixEditor* me, WINDOW* w)
 MatrixPane::MatrixPane(size_t n, MatrixEditor* me, WINDOW* w,
         const Cursor& start, const Cursor& end)
     : WindowPane(me, w, start, end), _mpp(MPP_MATRIX),
-      _mp(MP_COEFFICIENT), _mtp(MTP_TEXT),
+      _mp(MP_COEFFICIENT), _mtp(MTP_NOTES),
       _n(n), _c_i(0), _c_j(0), _s_i(0), _v_i(0),
-      _c_col_width(10), _s_col_width(6), _v_col_width(6)
+      _c_col_width(10), _s_col_width(6), _v_col_width(6), _database_id(-1)
 {
     _init();
 }
@@ -2206,12 +2205,12 @@ void MatrixPane::_init(void)
     Cursor start_pane(win_row + _header_rows + _n + 1, 0);
     Cursor end_pane(_win_end.row() - 1, 0);
     //_text_panes[MTP_MATRIX_DATA] = TextPane(_me, _win, start_pane, end_pane);
-    //_text_panes[MTP_TEXT] = TextPane(_me, _win, start_pane, end_pane);
+    //_text_panes[MTP_NOTES] = TextPane(_me, _win, start_pane, end_pane);
     _text_panes.insert(
             pair<MatrixTextPart, TextPane>(MTP_MATRIX_DATA,
                 TextPane(_me, _win, start_pane, end_pane)));
     _text_panes.insert(
-            pair<MatrixTextPart, TextPane>(MTP_TEXT,
+            pair<MatrixTextPart, TextPane>(MTP_NOTES,
                 TextPane(_me, _win, start_pane, end_pane)));
 }
 
@@ -2264,6 +2263,7 @@ MatrixPane::MatrixPane(const MatrixPane& rhs)
     _c_col_width(rhs._c_col_width), _s_col_width(rhs._s_col_width),
     _v_col_width(rhs._v_col_width), _pad(rhs._pad), _col_spacing(rhs._col_spacing),
     _vector_spacing(rhs._vector_spacing), _header_rows(rhs._header_rows),
+    _database_id(rhs._database_id),
     _valid_screen_chars(rhs._valid_screen_chars),
     _key_mode_actions(rhs._key_mode_actions)
 {
@@ -2300,6 +2300,7 @@ MatrixPane& MatrixPane::operator=(const MatrixPane& rhs)
     _col_spacing = rhs._col_spacing;
     _vector_spacing = rhs._vector_spacing;
     _header_rows = rhs._header_rows;
+    _database_id = rhs._database_id;
 
     _valid_screen_chars = rhs._valid_screen_chars;
     _key_mode_actions = rhs._key_mode_actions;
@@ -2823,12 +2824,12 @@ void MatrixPane::special(int ch)
                 break;
 
             case KEY_LEFT:
-                _mtp = MTP_MATRIX_DATA;
+                _mtp = MTP_NOTES;
                 draw();
                 break;
 
             case KEY_RIGHT:
-                _mtp = MTP_TEXT;
+                _mtp = MTP_MATRIX_DATA;
                 draw();
                 break;
         }
@@ -2843,11 +2844,8 @@ void MatrixPane::update_color(short fg, short bg)
 {
     _color_pair.pair(fg, bg);
 
-    auto mit = _text_panes.find(MTP_MATRIX_DATA);
-    mit->second.color().pair(fg, bg);
-
-    auto tit = _text_panes.find(MTP_TEXT);
-    tit->second.color().pair(fg, bg);
+    _text_panes.find(MTP_MATRIX_DATA)->second.color().pair(fg, bg);
+    _text_panes.find(MTP_NOTES)->second.color().pair(fg, bg);
 
     wbkgd(_win, COLOR_PAIR(_color_pair.pair_number()));
     redraw();
@@ -3209,14 +3207,11 @@ bool MatrixPane::empty(void) const
             return false;
     }
 
-    return _text_panes.find(MTP_TEXT)->second.empty();
+    return _text_panes.find(MTP_NOTES)->second.empty();
 }
 
-void MatrixPane::write(ostream& os) const
+void MatrixPane::write_matrix(ostream& os) const
 {
-    if (empty())
-        return;
-
     os << "[";
     for (size_t i = 0; i < _n; i++)
     {
@@ -3240,22 +3235,30 @@ void MatrixPane::write(ostream& os) const
     for (size_t i = 0; i < _n; i++)
         os << "[" << _v_vector[i] << "]";
     os << "]";
+}
+
+void MatrixPane::write_notes(ostream& os) const
+{
+    os << _text_panes.find(MTP_NOTES)->second;
+}
+
+void MatrixPane::write(ostream& os) const
+{
+    if (empty())
+        return;
+
+    write_matrix(os);
 
     os << "\n";
 
-    os << _text_panes.find(MTP_TEXT)->second;
+    write_notes(os);
 
     os << '' << '\n';  // End of transmission block character 0x17
 }
 
-void MatrixPane::read(istream& is)
+void MatrixPane::read_matrix(string s)
 {
-    static char buffer[1024];
-
     MatrixPane np(*this);
-
-    is.getline(buffer, sizeof(buffer));
-    string s(buffer);
 
     if (s.empty())
         return;
@@ -3279,7 +3282,7 @@ void MatrixPane::read(istream& is)
     np._c_i = np._c_j = np._s_i = np._v_i = 0;
     np._mpp = MPP_MATRIX;
     np._mp = MP_COEFFICIENT;
-    np._mtp = MTP_TEXT;
+    np._mtp = MTP_NOTES;
 
     np._c_matrix.clear();
     np._s_vector.clear();
@@ -3299,6 +3302,7 @@ void MatrixPane::read(istream& is)
 
     mstart = s.find("[[");
     mend = s.find("]]");
+
     size_t index = 0;
     for (pos = mstart + 1; pos < mend + 1; pos++)
     {
@@ -3401,10 +3405,30 @@ void MatrixPane::read(istream& is)
         np._v_vector[i] = MatrixEntry(np._win, c, np._v_col_width, v_vector[i]);
     }
 
-    Cursor start_pane(win_row + np._header_rows + n + 1, 0);
-    Cursor end_pane(np._win_end.row() - 1, 0);
+    *this = np;
+}
 
-    np._text_panes.erase(np._text_panes.find(MTP_TEXT));
+void MatrixPane::read_notes(const vector<string>& lines)
+{
+    size_t win_row = _win_start.row();
+
+    Cursor start_pane(win_row + _header_rows + _n + 1, 0);
+    Cursor end_pane(_win_end.row() - 1, 0);
+
+    _text_panes.erase(_text_panes.find(MTP_NOTES));
+
+    _text_panes.insert(
+            pair<MatrixTextPart, TextPane>(MTP_NOTES,
+                TextPane(_me, _win, lines, start_pane, end_pane)));
+}
+
+void MatrixPane::read(istream& is)
+{
+    char buffer[1024];
+
+    is.getline(buffer, sizeof(buffer));
+
+    read_matrix(string(buffer));
 
     vector<string> lines;
     while (is.peek() != '')
@@ -3415,11 +3439,7 @@ void MatrixPane::read(istream& is)
 
     is.getline(buffer, sizeof(buffer));
 
-    np._text_panes.insert(
-            pair<MatrixTextPart, TextPane>(MTP_TEXT,
-                TextPane(np._me, np._win, lines, start_pane, end_pane)));
-
-    *this = np;
+    read_notes(lines);
 }
 
 EvalPane::EvalPane(MatrixEditor* me, WINDOW* w)
@@ -3630,10 +3650,11 @@ MatrixEditor::MatrixEditor(void)
     _matrix_pane_header(NULL), _matrix_pane_window(NULL),
     _eval_pane_header(NULL), _eval_pane_window(NULL),
     _command_window(NULL), _error_window(NULL),
-    _command_history(0), _exit_loop(false)
+    _command_history(0), _search_history(0), _exit_loop(false), _mdb(NULL)
 
 {
-    // Nothing
+    _file_name = _default_file;
+    _db_name = _default_db;
 }
 
 MatrixEditor::~MatrixEditor(void)
@@ -3659,8 +3680,15 @@ void MatrixEditor::fini(void)
 
     _yanked.clear();
     _command_history.clear();
+    _search_history.clear();
 
     _exit_loop = false;
+
+    if (_mdb != NULL)
+    {
+        _mdb->close();
+        delete _mdb;
+    }
 
     if (_matrix_pane_header != NULL)
     {
@@ -4092,6 +4120,8 @@ void MatrixEditor::loop(void)
 
         if ((_mode == MODE_EDIT) && (ch == _cmd_char))
             process_command(_cmd_char);
+        else if ((_mode == MODE_EDIT) && (ch == _search_char))
+            process_search(_search_char);
         else
             _current_editor_window->key_action(ch, _mode);
 
@@ -4165,6 +4195,7 @@ void MatrixEditor::error(string e)
 
     int old_curs = curs_set(0);
 
+    wclear(_error_window);
     wprintw(_error_window, "%s", e.c_str());
     wrefresh(_error_window);
 
@@ -4565,6 +4596,40 @@ void MatrixEditor::next_pane(const vector<string>& args)
     _current_editor_window->redraw();
 }
 
+void MatrixEditor::panes(const vector<string>& args)
+{
+    string s("Loaded panes: (buffer # : database id)\n");
+
+    for (size_t i = 0; i < _matrix_panes.size(); i++)
+    {
+        s += to_string(i) + " : " + to_string(_matrix_panes[i].id());
+        if (i < (_matrix_panes.size() - 1))
+            s += ",  ";
+    }
+
+    info(s);
+}
+
+void MatrixEditor::set_pane(const vector<string>& args)
+{
+    if (args.empty())
+        return;
+
+    size_t idx = 0;
+    int pane = stoi(args[0], &idx);
+
+    if ((idx != args[0].size()) || (pane < 0) || ((size_t)pane > _matrix_panes.size() - 1))
+    {
+        error("Invalid pane entry: " + args[0]);
+        return;
+    }
+
+    info("Loading pane #" + to_string(pane));
+
+    _current_matrix_pane = pane;
+    _matrix_panes[_current_matrix_pane].redraw();
+}
+
 void MatrixEditor::matrix_pane(const vector<string>& args)
 {
     if (!args.empty() && (args[0] == "n"))  // New matrix
@@ -4630,12 +4695,140 @@ void MatrixEditor::redraw(const vector<string>& args)
 
 void MatrixEditor::open(const vector<string>& args)
 {
+    size_t next_pane = _matrix_panes.size();
+    vector<MatrixInfo> mi;
+    auto loaded = [&] (size_t id) -> bool {
+        for (auto pane : _matrix_panes)
+        {
+            if (pane.id() < 0)
+                return false;
+
+            if ((size_t)pane.id() == id)
+                return true;
+        }
+
+        return false;
+    };
+
+    auto load = [&] (size_t id) -> void {
+        for (size_t i = 0; i < _matrix_panes.size(); i++)
+        {
+            MatrixPane& mp(_matrix_panes[i]);
+
+            if (mp.id() < 0)
+                continue;
+
+            if ((size_t)mp.id() == id)
+            {
+                _current_matrix_pane = i;
+                _current_editor_window = &_matrix_panes[_current_matrix_pane];
+                _current_editor_window->redraw();
+
+                break;
+            }
+        }
+    };
+
+    if (args.empty())
+    {
+        string s("Opening all entries in database " + _db_name);
+        info(s);
+
+        try
+        {
+            if (_mdb == NULL)
+                _mdb = new MatrixDatabase(_db_name);
+
+            mi = _mdb->entries();
+
+        }
+        catch (DatabaseException& e)
+        {
+            error(e.what());
+            return;
+        }
+
+        info(s + "\nResults size: " + to_string(mi.size()));
+    }
+    else
+    {
+        string s("Opening entry with id: " + args[0]);
+        info(s);
+
+        MatrixInfo minfo;
+
+        try
+        {
+            if (_mdb == NULL)
+                _mdb = new MatrixDatabase(_db_name);
+
+            minfo = _mdb->entry(stoi(args[0]));
+
+        }
+        catch (DatabaseException& e)
+        {
+            error(e.what());
+            return;
+        }
+
+        if (loaded(minfo.id))
+        {
+            s += "\nMatrix pane already loaded.";
+            info(s);
+
+            load(minfo.id);
+            return;
+        }
+
+        mi.push_back(minfo);
+    }
+
+    for (size_t i = 0; i < mi.size(); i++)
+    {
+        if (loaded(mi[i].id))
+            continue;
+
+        MatrixPane mp(mi[i].dimension, this, _matrix_pane_window);
+
+        vector<string> vs;
+        size_t pos, start = 0;
+        while ((pos = mi[i].notes.find('\n', start)) != string::npos)
+        {
+            vs.push_back(mi[i].notes.substr(start, pos - start));
+            start = pos + 1;
+        }
+
+        mp.read_matrix(mi[i].data);
+        mp.read_notes(vs);
+
+        mp.id(mi[i].id);
+
+        _matrix_panes.push_back(mp);
+
+        if (i > 10)
+            break;
+    }
+
+    if (next_pane < _matrix_panes.size())
+    {
+        if (_matrix_panes[_current_matrix_pane].empty())
+        {
+            _matrix_panes.erase(_matrix_panes.begin() + _current_matrix_pane);
+            next_pane--;
+        }
+
+        _current_matrix_pane = next_pane;
+        _current_editor_window = &_matrix_panes[_current_matrix_pane];
+        _current_editor_window->redraw();
+    }
+
+#if 0
     string filename;
 
     if (!args.empty())
         filename = args[0];
     else
-        filename = g_default_file;
+        filename = _file_name;
 
     ifstream ifs(filename);
 
@@ -4660,18 +4853,103 @@ void MatrixEditor::open(const vector<string>& args)
         _current_editor_window = &_matrix_panes[_current_matrix_pane];
         _current_editor_window->redraw();
     }
+
+    if (_file_name != filename)
+        _file_name = filename;
+#endif
 }
 
 void MatrixEditor::write(const vector<string>& args)
 {
-    string filename;
+    MatrixPane& mp(_matrix_panes[_current_matrix_pane]);
+    if (mp.empty())
+    {
+        info("Nothing to write");
+        return;
+    }
 
-    if (!args.empty())
-        filename = args[0];
-    else
-        filename = g_default_file;
+    string s("Writing to database: " + _db_name);
+    info(s);
+    try
+    {
+        if (_mdb == NULL)
+            _mdb = new MatrixDatabase(_db_name);
 
-    ofstream ofs(filename, ios_base::app);
+        ostringstream oss_matrix;
+        ostringstream oss_notes;
+
+        mp.write_matrix(oss_matrix);
+        mp.write_notes(oss_notes);
+
+        MatrixInfo mi = { 0, "", mp.dimension(), oss_matrix.str(), oss_notes.str() };
+
+        if (mp.id() > 0)
+        {
+            mi.id = mp.id();
+            _mdb->update(mi);
+        }
+        else
+        {
+            if (_mdb->insert(mi) > 0)
+            {
+                mp.id(mi.id);
+                info(s + "\nMatrix pane id:" + to_string(mi.id));
+            }
+            else
+            {
+                error("Failed to write entry to database.");
+                return;
+            }
+        }
+    }
+    catch (DatabaseException& e)
+    {
+        error(e.what());
+        return;
+    }
+}
+
+void MatrixEditor::write_all(const vector<string>& args)
+{
+    info("Writing all entries to database: " + _db_name);
+    try
+    {
+        if (_mdb == NULL)
+            _mdb = new MatrixDatabase(_db_name);
+
+        for (size_t i = 0; i < _matrix_panes.size(); i++)
+        {
+            if (_matrix_panes[i].empty())
+                continue;
+
+            ostringstream oss_matrix;
+            ostringstream oss_notes;
+
+            _matrix_panes[i].write_matrix(oss_matrix);
+            _matrix_panes[i].write_notes(oss_notes);
+
+            MatrixInfo mi = { 0, "", _matrix_panes[i].dimension(), oss_matrix.str(), oss_notes.str() };
+
+            if (_matrix_panes[i].id() > 0)
+            {
+                mi.id = _matrix_panes[i].id();
+                _mdb->update(mi);
+            }
+            else
+            {
+                _mdb->insert(mi);
+            }
+        }
+    }
+    catch (DatabaseException& e)
+    {
+        error(e.what());
+        return;
+    }
+
+    string filename(_file_name);
+
+    ofstream ofs(filename);
 
     if (!ofs.is_open())
     {
@@ -4685,5 +4963,236 @@ void MatrixEditor::write(const vector<string>& args)
     //info("Finished writing to file: \"" + filename + "\".");
 
     ofs.close();
+
+    if (_file_name != filename)
+        _file_name = filename;
 }
 
+void MatrixEditor::remove(const vector<string>& args)
+{
+    if (_matrix_panes[_current_matrix_pane].id() < 0)
+    {
+        error("Matrix pane not in database.");
+        return;
+    }
+
+    info("Deleting matrix pane: " + to_string(_matrix_panes[_current_matrix_pane].id()));
+    try
+    {
+        if (_mdb == NULL)
+            _mdb = new MatrixDatabase(_db_name);
+
+        _mdb->remove(_matrix_panes[_current_matrix_pane].id());
+
+        _matrix_panes.erase(_matrix_panes.begin() + _current_matrix_pane);
+
+        if (_matrix_panes.empty())
+            _matrix_panes.push_back(MatrixPane(2, this, _matrix_pane_window));
+
+        if (_current_matrix_pane == _matrix_panes.size())
+            _current_matrix_pane = _matrix_panes.size() - 1;
+
+        _matrix_panes[_current_matrix_pane].redraw();
+
+    }
+    catch (DatabaseException& e)
+    {
+        error(e.what());
+        return;
+    }
+}
+
+void MatrixEditor::write_quit(const vector<string>& args)
+{
+    write(args);
+    quit(args);
+}
+
+void MatrixEditor::write_quit_all(const vector<string>& args)
+{
+    write(args);
+    quit_all(args);
+}
+
+void MatrixEditor::process_search(int ch)
+{
+    static char buffer[256];
+    static size_t search_index = 0;
+
+    if (!_initialized)
+        return;
+
+    WINDOW* w = _command_window;
+
+    waddch(w, ch);
+
+    int y, x;
+    int line_start = 1;
+    int line_end = 1;
+    bool exit_loop = false;
+
+    getyx(w, y, x);
+
+    while ((ch = wgetch(w)) != 0)
+    {
+        switch (ch)
+        {
+            case K_ESCAPE:
+                if (line_end > line_start)
+                {
+                    mvwinnstr(w, y, line_start, buffer, line_end - line_start);
+                    string s(buffer);
+                    size_t i;
+                    for (i = 0; i < _search_history.size(); i++)
+                    {
+                        if (_search_history[i] == s)
+                            break;
+                    }
+
+                    if (i == _search_history.size())
+                    {
+                        _search_history.insert(_search_history.begin(), s);
+                        search_index = 0;
+                    }
+                }
+
+                exit_loop = true;
+                break;
+
+            case KEY_ENTER:
+            case K_NEWLINE:
+                if (line_end > line_start)
+                {
+                    mvwinnstr(w, y, line_start, buffer, line_end - line_start);
+                    string s(buffer);
+                    size_t i;
+                    for (i = 0; i < _search_history.size(); i++)
+                    {
+                        if (_search_history[i] == s)
+                            break;
+                    }
+
+                    if (i == _search_history.size())
+                    {
+                        _search_history.insert(_search_history.begin(), s);
+                        search_index = 0;
+                    }
+
+                    trim_whitespace(s);
+                    search(s);
+                }
+
+                exit_loop = true;
+                break;
+
+            case KEY_BACKSPACE:
+            case K_BACKSPACE1:
+            case K_BACKSPACE2:
+                if ((x > line_start) || (line_end == line_start))
+                {
+                    mvwdelch(w, y, x - 1);
+                    line_end--;
+                }
+                break;
+
+            case KEY_DC:
+                if (x == line_end)
+                    mvwdelch(w, y, x - 1);
+                else
+                    wdelch(w);
+                line_end--;
+                break;
+
+            case KEY_LEFT:
+                if (x > line_start)
+                    wmove(w, y, x - 1);
+                break;
+
+            case KEY_RIGHT:
+                if (x < line_end)
+                    wmove(w, y, x + 1);
+                break;
+
+            case K_TAB:
+                // cycle through possible searchs that match beginning of string
+                // This is a completion depending on what's there already
+                break;
+
+            case KEY_UP:
+                if (!_search_history.empty())
+                {
+                    string s(_search_history[search_index]);
+                    line_end = s.size() + 1;
+                    wmove(w, y, line_start);
+                    wclrtoeol(w);
+                    mvwaddstr(w, y, line_start, s.c_str());
+
+                    if (search_index < (_search_history.size() - 1))
+                        search_index++;
+                }
+                break;
+            case KEY_DOWN:
+                if (!_search_history.empty())
+                {
+                    string s(_search_history[search_index]);
+                    line_end = s.size() + 1;
+                    wmove(w, y, line_start);
+                    wclrtoeol(w);
+                    mvwaddstr(w, y, line_start, s.c_str());
+
+                    if (search_index > 0)
+                        search_index--;
+                }
+                break;
+
+            default:
+                if (isprint(ch))
+                {
+                    winsch(w, ch);
+                    wmove(w, y, x + 1);
+                    line_end++;
+                }
+                break;
+        }
+
+        if (exit_loop)
+            break;
+
+        getyx(w, y, x);
+        if (x == 0)
+            break;
+    }
+
+    wclear(_command_window);
+    wrefresh(_command_window);
+}
+
+void MatrixEditor::search(const string& s)
+{
+    info("Searching notes in database for \"" + s + "\"");
+    vector<MatrixInfo> mi;
+    try
+    {
+        if (_mdb == NULL)
+            _mdb = new MatrixDatabase(_db_name);
+
+        mi = _mdb->query(s);
+    }
+    catch (DatabaseException& e)
+    {
+        error(e.what());
+        return;
+    }
+
+    string results("Searching notes in database for \"" + s + "\"\n");
+    results += "Found " + to_string(mi.size()) + " matching " +
+        ((mi.size() == 1) ? " entry: " : " entries: ");
+    for (size_t i = 0; i < mi.size(); i++)
+    {
+        results += to_string(mi[i].id);
+        if (i < (mi.size() - 1))
+            results += ", ";
+    }
+
+    info(results);
+}
