@@ -1542,6 +1542,7 @@ class MatrixPane : public WindowPane
         size_t _vector_spacing = 3;
         size_t _header_rows = 2;
         Matrix<Scientific> _last_A, _last_s, _last_v;
+        //Matrix<double> _last_A, _last_s, _last_v;
         int _database_id;
 
         vector<int> _valid_screen_chars = {

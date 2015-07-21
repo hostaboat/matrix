@@ -2902,6 +2902,7 @@ void MatrixPane::solve(void)
     }
 
     Matrix<Scientific> A(_n);
+    //Matrix<double> A(_n);
     try
     {
         for (i = 0; i < _n; i++)
@@ -2909,11 +2910,13 @@ void MatrixPane::solve(void)
             for (j = 0; j < _n; j++)
             {
                 A(i+1,j+1) =
+                    //Number<double>::parse_expression(_c_matrix[i][j].data());
                     Number<Scientific>::parse_expression(_c_matrix[i][j].data());
             }
         }
     }
     catch (NumberParsingException<Scientific>& e)
+    //catch (NumberParsingException<double>& e)
     {
         ostringstream oss;
 
@@ -2936,12 +2939,15 @@ void MatrixPane::solve(void)
     }
 
     Matrix<Scientific> s(_n, 1);
+    //Matrix<double> s(_n, 1);
     try
     {
         for (i = 0; i < _n; i++)
+            //s(i+1,1) = Number<double>::parse_expression(_s_vector[i].data());
             s(i+1,1) = Number<Scientific>::parse_expression(_s_vector[i].data());
     }
     catch (NumberParsingException<Scientific>& e)
+    //catch (NumberParsingException<double>& e)
     {
         ostringstream oss;
 
@@ -2980,11 +2986,13 @@ void MatrixPane::solve(void)
     else
     {
         Matrix<Scientific> v;
+        //Matrix<double> v;
         try
         {
             v = A.solve(s);
         }
         catch (MatrixSingularException<Scientific>& e)
+        //catch (MatrixSingularException<double>& e)
         {
             ostringstream oss;
 
@@ -3162,6 +3170,7 @@ void MatrixPane::solve(void)
         cout.rdbuf(coss.rdbuf());
 
         Matrix<Scientific> CR = A.cramers_rule(s, j);
+        //Matrix<double> CR = A.cramers_rule(s, j);
 
         str = coss.str();
         cout.rdbuf(cout_buf);
@@ -4808,8 +4817,8 @@ void MatrixEditor::open(const vector<string>& args)
 
         _matrix_panes.push_back(mp);
 
-        if (i > 10)
-            break;
+        //if (i > 10)
+        //    break;
     }
 
     if (next_pane < _matrix_panes.size())

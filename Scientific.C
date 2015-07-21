@@ -411,7 +411,8 @@ void Scientific::print(ostream& os) const
         num *= _sign;
     }
 
-    os << fixed << right << setprecision(5) << (double)num / den
+    //os << fixed << right << setprecision(5) << (double)num / den
+    os << fixed << right << setprecision(9) << (double)num / den
         << "e" << ((exp < 0) ? '-' : '+') << setw(2) << setfill('0') << (int)abs(exp);
     //os << setw(10) << fixed << right << setprecision(5) << (double)num / den
     //    << "e" << ((exp < 0) ? '-' : '+') << setw(2) << setfill('0') << (int)abs(exp);
